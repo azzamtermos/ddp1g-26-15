@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables & secrets (API Keys)
+.env
+.env.*
+
+# Runtime local transaction logs (prevent merge conflicts across team members)
+data/undo_history.json
+
+# Pytest & coverage cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS / Editor specific files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
