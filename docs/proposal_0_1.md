@@ -13,7 +13,7 @@ Proposal ini dirancang dengan mematuhi seluruh aturan proyek di folder `.agent/s
 2. **`modern-pyqt-ux`**:
    - Palet warna lembut & modern: latar belakang `#F8FAFC`, permukaan kartu `#FFFFFF` dengan border `#E2E8F0`, tombol utama biru `#2563EB` (hover `#1D4ED8`).
    - Sudut membulat (`border-radius: 8px` untuk tombol/input, `12px` untuk kartu), jarak antar-elemen lega (`spacing >= 12px`, `margin >= 24px`), dan font modern (`Segoe UI`, `Inter`, `Ubuntu`) ukuran minimal `13px` (judul `18px–20px` *bold*).
-   - Bahasa manusiawi yang ramah guru/pengguna awam: **"Pilih Folder Berantakan"**, **"Lihat Rencana Rapikan"**, **"Rapikan Sekarang"**, dan **"Batalkan (Undo)"**.
+   - Bahasa manusiawi yang ramah pengguna awam: **"Pilih Folder Berantakan"**, **"Lihat Rencana Rapikan"**, **"Rapikan Sekarang"**, dan **"Batalkan (Undo)"**.
    - Fokus visual berupa area *drag-and-drop* besar bergaris putus-putus (*dashed border*) di bagian atas dan tabel *preview* dengan indikator badge warna lembut (hijau untuk file siap dirapikan, kuning/oranye untuk file duplikat).
 3. **`safe-file-ops`**:
    - Seluruh manipulasi path wajib menggunakan `pathlib.Path` (lintas platform Windows & Linux, tanpa penggabungan string `+`).
@@ -57,7 +57,7 @@ ddp1g-26-15/
 ## 2. Rancangan Class, Method, dan Alur Signals & Slots (`ui/` ↔ `core/`)
 
 ### A. Kontrak Data (`core/models.py`)
-Agar seluruh anggota tim memiliki standar struktur data yang seragam tanpa konflik:
+Struktur data seragam untuk komunikasi antara modul `core/` dan `ui/`:
 
 ```python
 from dataclasses import dataclass
@@ -74,14 +74,14 @@ class FilePlanItem:
     status_label: str = "Siap Dirapikan"  # "Siap Dirapikan" (Hijau) atau "File Duplikat" (Oranye)
 ```
 
-### B. Kerangka Modul Logika (`core/`) — Placeholder untuk Anggota Tim
-Seluruh fungsi di `core/` akan disiapkan sebagai *skeleton/placeholder* dengan *type hints* dan *docstring* Bahasa Indonesia yang jelas:
+### B. Kerangka Modul Logika (`core/`)
+Seluruh fungsi di `core/` dilengkapi *type hints* dan *docstring* Bahasa Indonesia yang jelas:
 
 1. **`core/scanner.py` — `class FolderScanner`**
    - `__init__(self, rules_path: str = "data/default_rules.json") -> None`: Memuat aturan pengelompokan ekstensi dan kata kunci dari file JSON menggunakan `pathlib.Path`.
    - `scan_directory(self, folder_path: str) -> list[FilePlanItem]`: Memindai seluruh file tingkat pertama di dalam `folder_path` (mengabaikan subfolder yang sudah rapi dan file tersembunyi), lalu mengembalikan daftar `FilePlanItem`.
    - `determine_category(self, file_path: Path) -> str`: Menentukan kategori folder berdasarkan ekstensi dan kata kunci nama/isi file (misal: RPP, Silabus, Nilai, Soal).
-   - `extract_document_hint(self, file_path: Path) -> str | None`: *(Placeholder fitur lanjutan)* Membaca halaman pertama PDF/dokumen untuk mendeteksi kata kunci tambahan.
+   - `extract_document_hint(self, file_path: Path) -> str | None`: Membaca halaman pertama PDF/dokumen untuk mendeteksi kata kunci tambahan.
 
 2. **`core/duplicate_finder.py` — `class DuplicateFinder`**
    - `calculate_file_hash(self, file_path: Path, chunk_size: int = 65536) -> str`: Menghitung nilai hash SHA-256 dari isi file secara bertahap per *chunk* agar aman untuk file berukuran besar.
@@ -124,24 +124,28 @@ Sesuai dokumentasi resmi **PyQt6** (terverifikasi via Context7 `/websites/riverb
      - **"Lihat Rencana Rapikan"**
      - **"Rapikan Sekarang"**
      - **"Batalkan (Undo)"**
-   - Mengelola siklus hidup thread (`worker.finished.connect(worker.deleteLater)`) dan menonaktifkan tombol selama proses berjalan agar aman dari klik ganda.
+   - Mengelola siklus hidup thread dan menonaktifkan tombol selama proses berjalan agar aman dari klik ganda.
 
 ---
 
-## 3. Pembagian Modul Tim (4 Anggota — Bebas Merge Conflict)
+## 3. Rincian Tugas dalam 4 Fase Pengerjaan
 
-| Anggota | Peran & Modul | File yang Dikerjakan (Eksklusif) | Lingkup Tugas Detail |
-| :--- | :--- | :--- | :--- |
-| **Anggota 1** | **UI/UX, QSS & Threading Integrator** | `main.py`, `ui/main_window.py`, `ui/widgets.py`, `ui/worker.py`, `ui/styles.qss` | Membangun antarmuka PyQt6 modern, area *drag-and-drop*, tabel *preview* berwarna, lembar gaya QSS, serta menghubungkan `QThread` dengan modul `core/`. |
-| **Anggota 2** | **Folder Scanner & Smart Categorizer** | `core/scanner.py`, `data/default_rules.json`, `tests/test_scanner.py` | Mengimplementasikan pemindaian direktori berbasis `pathlib.Path`, aturan pengelompokan file guru (Dokumen Ajar, Administrasi, Gambar, Media, Arsip), dan ekstraksi kata kunci dokumen/PDF. |
-| **Anggota 3** | **Duplicate Detection Engine** | `core/duplicate_finder.py`, `tests/test_duplicate_finder.py` | Mengimplementasikan algoritma deteksi file kembar dua tahap (filter ukuran file + hashing `hashlib.sha256` per *chunk*) dan memperbarui status `FilePlanItem`. |
-| **Anggota 4** | **Safe File Organizer & 1-Click Undo** | `core/organizer.py`, `data/undo_history.json`, `tests/test_organizer.py` | Mengimplementasikan pemindahan file aman (`pathlib.Path`), penomoran otomatis konflik nama (`_1`, `_2`), pembuangan ke *Recycle Bin* (`send2trash`), pencatatan/pemulihan JSON Undo, dan penanganan `PermissionError`. |
+### Fase 1: Fondasi Proyek, Konfigurasi Data & Kontrak Model
+- Menyiapkan daftar dependensi di `requirements.txt` (`PyQt6`, `Send2Trash`, `pypdf`, `pytest`).
+- Membuat paket `core/__init__.py` dan kontrak data `core/models.py` (`FilePlanItem`, `TransactionRecord`).
+- Menyiapkan folder `data/` beserta aturan pengelompokan kategori default di `data/default_rules.json`.
 
----
+### Fase 2: Modul Logika `core/` (Scanner, Duplicate Finder & Safe Organizer)
+- Membuat `core/scanner.py` (`FolderScanner`) untuk memindai direktori dengan `pathlib.Path`, menentukan kategori file, dan menyiapkan ekstraksi kata kunci dokumen/PDF.
+- Membuat `core/duplicate_finder.py` (`DuplicateFinder`) untuk mendeteksi file duplikat menggunakan filter ukuran file dan hash SHA-256 per *chunk*.
+- Membuat `core/organizer.py` (`SafeFileOrganizer`) untuk mengeksekusi pemindahan file, menangani konflik nama (`_1`, `_2`), mencatat dan memulihkan transaksi Undo (`data/undo_history.json`), serta menangani `PermissionError`.
 
-## 4. Tahapan Eksekusi Blueprint (4 Fase Git Commit Bertahap)
+### Fase 3: Antarmuka PyQt6 Modern, QSS & Background Worker (`ui/` & `main.py`)
+- Membuat lembar gaya terpusat `ui/styles.qss` sesuai palet warna dan tipografi `modern-pyqt-ux`.
+- Membuat komponen kustom `ui/widgets.py` (`DropZoneWidget` & `PreviewTableWidget`).
+- Membuat worker thread `ui/worker.py` (`ScanWorker` & `OrganizeWorker` berbasis `QThread`).
+- Membuat jendela utama `ui/main_window.py` (`MainWindow`) dan *entry point* aplikasi `main.py`.
 
-- **Fase 1:** `requirements.txt`, `core/__init__.py`, `core/models.py`, `data/.gitkeep`, `data/default_rules.json`, `data/undo_history.json`.
-- **Fase 2:** `core/scanner.py`, `core/duplicate_finder.py`, `core/organizer.py`.
-- **Fase 3:** `ui/__init__.py`, `ui/styles.qss`, `ui/widgets.py`, `ui/worker.py`, `ui/main_window.py`, `main.py`.
-- **Fase 4:** `tests/__init__.py`, `tests/test_scanner.py`, `tests/test_duplicate_finder.py`, `tests/test_organizer.py`.
+### Fase 4: Pengujian Unit (`tests/`)
+- Membuat paket pengujian `tests/__init__.py`.
+- Membuat pengujian unit `tests/test_scanner.py`, `tests/test_duplicate_finder.py`, dan `tests/test_organizer.py` menggunakan `pytest` dan fixture direktori sementara (`tmp_path`).

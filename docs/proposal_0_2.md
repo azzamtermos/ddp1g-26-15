@@ -13,7 +13,7 @@ Proposal ini dirancang dengan mematuhi seluruh aturan proyek di folder `.agent/s
 2. **`modern-pyqt-ux`**:
    - Palet warna lembut & modern: latar belakang `#F8FAFC`, permukaan kartu `#FFFFFF` dengan border `#E2E8F0`, tombol utama biru `#2563EB` (hover `#1D4ED8`).
    - Sudut membulat (`border-radius: 8px` untuk tombol/input, `12px` untuk kartu), jarak antar-elemen lega (`spacing >= 12px`, `margin >= 24px`), dan font modern (`Segoe UI`, `Inter`, `Ubuntu`) ukuran minimal `13px` (judul `18px–20px` *bold*).
-   - Bahasa manusiawi yang ramah guru/pengguna awam: **"Pilih Folder Berantakan"**, **"Pindai Ulang (Refresh)"**, **"Rapikan Sekarang"**, **"Batalkan (Undo)"**, dan **"Bersihkan Karantina ke Sampah"**.
+   - Bahasa manusiawi yang ramah pengguna awam: **"Pilih Folder Berantakan"**, **"Pindai Ulang (Refresh)"**, **"Rapikan Sekarang"**, **"Batalkan (Undo)"**, dan **"Bersihkan Karantina ke Sampah"**.
    - Begitu pengguna melakukan *drag-and-drop* atau memilih folder melalui **"Pilih Folder Berantakan"**, pemindaian (`ScanWorker`) langsung berjalan otomatis mengisi tabel *preview* tanpa perlu klik tombol kedua.
 3. **`safe-file-ops`**:
    - Seluruh manipulasi path wajib menggunakan `pathlib.Path` (lintas platform Windows & Linux, tanpa penggabungan string `+`).
@@ -31,7 +31,7 @@ ddp1g-26-15/
 ├── .gitignore                   # Mengabaikan data/undo_history.json, .env, __pycache__/, .venv/, .pytest_cache/
 ├── main.py                      # Entry point aplikasi: inisialisasi QApplication, muat styles.qss, buka MainWindow
 ├── requirements.txt             # Daftar dependensi (PyQt6, Send2Trash, pypdf, python-dotenv, pytest)
-├── docs/                        # Arsip dokumen perencanaan & arsitektur tim
+├── docs/                        # Arsip dokumen perencanaan & arsitektur
 │   ├── proposal_0_1.md          # Arsip proposal versi pertama
 │   └── proposal_0_2.md          # Dokumen proposal arsitektur & rencana kerja final (versi 0.2)
 ├── ui/                          # Paket Antarmuka Pengguna (HANYA tampilan & event UI, tanpa os/shutil/pathlib)
@@ -88,25 +88,25 @@ class TransactionRecord:
     timestamp: str = ""
 ```
 
-### B. Kerangka Modul Logika (`core/`) — Placeholder dengan Dukungan Real-Time Progress & Hybrid AI
-Seluruh fungsi di `core/` disiapkan sebagai *skeleton/placeholder* dengan *type hints*, parameter `progress_callback: Callable[[int, str], None] | None = None`, dan *docstring* Bahasa Indonesia yang jelas:
+### B. Kerangka Modul Logika (`core/`) — Dukungan Real-Time Progress & Hybrid AI
+Seluruh fungsi di `core/` dilengkapi *type hints*, parameter `progress_callback: Callable[[int, str], None] | None = None`, dan *docstring* Bahasa Indonesia yang jelas:
 
 1. **`core/scanner.py` — `class FolderScanner`**
    - `__init__(self, rules_path: str = "data/default_rules.json") -> None`: Memuat aturan pengelompokan ekstensi dan kata kunci dari file JSON menggunakan `pathlib.Path`.
    - `scan_directory(self, folder_path: str, progress_callback: Callable[[int, str], None] | None = None) -> list[FilePlanItem]`: Memindai seluruh file tingkat pertama di dalam `folder_path` (mengabaikan subfolder kategori dan `_Karantina_Duplikat/`), memanggil `progress_callback(persen, pesan)` secara berkala, lalu mengembalikan daftar `FilePlanItem`.
    - `determine_category(self, file_path: Path) -> str`: Menentukan kategori folder berdasarkan ekstensi dan kata kunci nama/isi file (misal: RPP, Silabus, Nilai, Soal).
-   - `extract_document_hint(self, file_path: Path) -> str | None`: *(Placeholder fitur lanjutan)* Membaca halaman pertama PDF/dokumen untuk mendeteksi kata kunci/judul dokumen.
-   - `propose_smart_name(self, file_path: Path, doc_hint: str | None = None) -> str`: *(Placeholder Pipeline AI Hybrid)* Mengusulkan nama file baru yang rapi dan deskriptif berdasarkan `doc_hint` atau metadata (dapat diintegrasikan dengan API AI seperti Qwen menggunakan konfigurasi `.env` / `python-dotenv`, dengan *fallback* otomatis ke `file_path.name` jika sedang offline atau API key tidak tersedia).
+   - `extract_document_hint(self, file_path: Path) -> str | None`: Membaca halaman pertama PDF/dokumen untuk mendeteksi kata kunci/judul dokumen.
+   - `propose_smart_name(self, file_path: Path, doc_hint: str | None = None) -> str`: Mengusulkan nama file baru yang rapi dan deskriptif berdasarkan `doc_hint` atau metadata (dapat diintegrasikan dengan API AI menggunakan konfigurasi `.env` / `python-dotenv`, dengan *fallback* otomatis ke `file_path.name` jika sedang offline atau API key tidak tersedia).
 
-2. **`core/duplicate_finder.py` — `class DuplicateFinder` (Porsi Kerja Seimbang untuk Anggota 3)**
+2. **`core/duplicate_finder.py` — `class DuplicateFinder`**
    - `calculate_file_hash(self, file_path: Path, chunk_size: int = 65536) -> str`: Menghitung nilai hash SHA-256 dari isi file secara bertahap per *chunk* agar aman untuk file berukuran besar.
    - `mark_duplicates(self, items: list[FilePlanItem], progress_callback: Callable[[int, str], None] | None = None) -> list[FilePlanItem]`: Mengelompokkan item berdasarkan `file_size`, membandingkan hash SHA-256 pada ukuran yang sama, memanggil `progress_callback`, serta mengubah `is_duplicate = True`, `category = "_Karantina_Duplikat"`, `proposed_path` ke dalam folder `_Karantina_Duplikat/`, dan `status_label = "File Duplikat"`.
-   - `detect_obsolete_installers(self, items: list[FilePlanItem], age_days: int = 30) -> list[FilePlanItem]`: Memeriksa file berekstensi installer/sementara (`.exe`, `.msi`, `.dmg`, `.deb`, `.apk`, `.tmp`, `.crdownload`) yang usianya melebihi `age_days`, lalu menandai `is_obsolete_temp = True` dan `status_label = "Installer Usang"`.
+   - `detect_obsolete_installers(self, items: list[FilePlanItem], age_days: int = 30) -> list[FilePlanItem]`: Memeriksa file berekstensi installer/sementara (`.exe`, `.msi`, `.dmg`, `.deb`, `.apk`, `.tmp`, `.crdownload`, `.part`) yang usianya melebihi `age_days`, lalu menandai `is_obsolete_temp = True` dan `status_label = "Installer Usang"`.
    - `calculate_wasted_space(self, items: list[FilePlanItem]) -> dict[str, int | str]`: Menghitung total estimasi ruang penyimpanan yang bisa dihemat dari file duplikat dan installer usang (mengembalikan dictionary berisi `total_bytes`, `duplicate_count`, `obsolete_count`, dan `formatted_size` seperti `"124.5 MB"` untuk ditampilkan di ringkasan UI).
 
 3. **`core/organizer.py` — `class SafeFileOrganizer`**
    - `__init__(self, undo_log_path: str = "data/undo_history.json") -> None`: Menyiapkan path penyimpanan log transaksi Undo dan memanggil `_ensure_undo_log_exists()` agar file `data/undo_history.json` otomatis dibuat saat *runtime* jika belum ada.
-   - `_ensure_undo_log_exists(self) -> None`: Membuat folder `data/` dan file `undo_history.json` berisi `[]` jika belum tersedia di komputer pengguna/anggota tim.
+   - `_ensure_undo_log_exists(self) -> None`: Membuat folder `data/` dan file `undo_history.json` berisi `[]` jika belum tersedia.
    - `resolve_conflict_path(self, target_path: Path) -> Path`: Memeriksa apakah `target_path` sudah ada; jika sudah ada, menghasilkan nama baru dengan penomoran otomatis (`nama_1.pdf`, `nama_2.pdf`, dst.) tanpa menimpa file lama.
    - `save_undo_log(self, transactions: list[dict[str, str]]) -> None`: Menyimpan daftar transaksi `{"old_path": "...", "new_path": "..."}` ke `data/undo_history.json` sebelum/saat pemindahan berlangsung.
    - `execute_plan(self, items: list[FilePlanItem], progress_callback: Callable[[int, str], None] | None = None) -> tuple[int, list[str]]`: Mengeksekusi pemindahan file normal ke folder kategorinya dan memindahkan file duplikat ke folder lokal `_Karantina_Duplikat/` menggunakan `pathlib.Path.rename()` (sehingga 100% dapat dipulihkan lewat fitur Undo), melaporkan progres lewat `progress_callback`, mencatat log Undo, serta menangkap `PermissionError` agar aplikasi tidak *crash*.
@@ -121,7 +121,7 @@ Sesuai dokumentasi resmi **PyQt6** (terverifikasi via Context7 `/websites/riverb
      - Signal: `folder_selected = pyqtSignal(str)`
      - Method: `dragEnterEvent`, `dropEvent`, `_on_browse_clicked()` (membuka `QFileDialog.getExistingDirectory` melalui tombol **"Pilih Folder Berantakan"** dan langsung memancarkan `folder_selected`).
    - `class PreviewTableWidget(QTableWidget)`:
-     - Method: `populate_items(self, items: list[FilePlanItem]) -> None` (menampilkan kolom *Nama Asli*, *Usulan Nama Baru*, *Kategori Tujuan*, dan *Status* dengan badge warna hijau `#DCFCE7` / teks `#166534` untuk `"Siap Dirapikan"` dan kuning/oranye `#FEF3C7` / teks `#92400E` untuk `"File Duplikat"` atau `"Installer Usang"`).
+     - Method: `populate_items(self, items: list[FilePlanItem]) -> None` (menampilkan kolom *Nama File Asli*, *Usulan Nama Baru*, *Kategori Tujuan*, dan *Status* dengan badge warna hijau `#DCFCE7` / teks `#166534` untuk `"Siap Dirapikan"` dan kuning/oranye `#FEF3C7` / teks `#92400E` untuk `"File Duplikat"` atau `"Installer Usang"`).
 
 2. **`ui/worker.py`**
    - `class ScanWorker(QThread)`:
@@ -179,31 +179,38 @@ sequenceDiagram
 
 ---
 
-## 3. Pembagian Modul Tim (4 Anggota — Bebas Merge Conflict & Beban Kerja Seimbang)
-
-| Anggota | Peran & Modul | File yang Dikerjakan (Eksklusif) | Lingkup Tugas Detail |
-| :--- | :--- | :--- | :--- |
-| **Anggota 1** | **UI/UX, QSS & Threading Integrator** | `main.py`, `ui/main_window.py`, `ui/widgets.py`, `ui/worker.py`, `ui/styles.qss` | Membangun antarmuka PyQt6 modern, area *drag-and-drop* yang langsung memicu *auto-scan*, `QProgressBar` *real-time*, tabel *preview* ber-badge warna, tombol **"Pindai Ulang (Refresh)"**, serta integrasi `QThread`. |
-| **Anggota 2** | **Folder Scanner, Smart Categorizer & AI Renamer** | `core/scanner.py`, `data/default_rules.json`, `tests/test_scanner.py` | Mengimplementasikan pemindaian direktori berbasis `pathlib.Path` dengan `progress_callback`, aturan pengelompokan file guru, ekstraksi teks PDF (`extract_document_hint`), dan penamaan pintar (`propose_smart_name` via aturan lokal / API AI dengan fallback offline). |
-| **Anggota 3** | **Duplicate, Storage Analyzer & Obsolete Detector** | `core/duplicate_finder.py`, `tests/test_duplicate_finder.py` | Mengimplementasikan deteksi file duplikat dua tahap (ukuran file + hashing `hashlib.sha256` per *chunk*) dengan `progress_callback`, penandaan file installer/sementara yang usang (`detect_obsolete_installers`), dan kalkulasi estimasi ruang penyimpanan yang dihemat (`calculate_wasted_space`). |
-| **Anggota 4** | **Safe File Organizer, Quarantine & 1-Click Undo** | `core/organizer.py`, `tests/test_organizer.py` | Mengimplementasikan inisialisasi otomatis `data/undo_history.json` saat *runtime*, pemindahan file dengan `progress_callback`, karantina duplikat ke `_Karantina_Duplikat/`, penomoran otomatis konflik nama (`_1`, `_2`), pemulihan 100% file via Undo, pembersihan karantina ke *Recycle Bin* (`empty_quarantine_to_trash` via `send2trash`), dan penanganan `PermissionError`. |
-
----
-
-## 4. Tahapan Eksekusi Blueprint (4 Fase Git Commit Bertahap)
+## 3. Rincian Tugas dalam 4 Fase Pengerjaan
 
 ### Fase 1: Fondasi Proyek, `.gitignore`, Konfigurasi Data & Kontrak Model
-- **File yang dibuat:** `.gitignore` (mengabaikan `data/undo_history.json`, `.env`, `__pycache__/`, `.venv/`), `requirements.txt` (termasuk `python-dotenv`), `core/__init__.py`, `core/models.py` (dengan `proposed_name`), `data/.gitkeep`, `data/default_rules.json`.
+- **File yang dikerjakan:** `.gitignore`, `requirements.txt`, `core/__init__.py`, `core/models.py`, `data/.gitkeep`, `data/default_rules.json`.
+- **Daftar Tugas:**
+  1. Mengonfigurasi `.gitignore` untuk mengabaikan `data/undo_history.json`, `.env`, `__pycache__/`, `.venv/`, dan `.pytest_cache/`.
+  2. Mendefinisikan dependensi proyek di `requirements.txt` (`PyQt6`, `Send2Trash`, `pypdf`, `python-dotenv`, `pytest`).
+  3. Membuat kontrak dataclass `FilePlanItem` (dengan dukungan `proposed_name` dan `is_obsolete_temp`) serta `TransactionRecord` di `core/models.py`.
+  4. Menyusun aturan pengelompokan ekstensi dan kata kunci kategori default di `data/default_rules.json`.
 - **Rekomendasi pesan commit:** `chore: initialize project structure, gitignore, dependencies, and core data models`
 
-### Fase 2: Kerangka Modul Logika `core/` (Placeholder Ber-docstring & Progress Callback)
-- **File yang dibuat:** `core/scanner.py` (termasuk `propose_smart_name`), `core/duplicate_finder.py`, `core/organizer.py`.
+### Fase 2: Kerangka Modul Logika `core/` (Scanner, Duplicate Finder & Safe Organizer)
+- **File yang dikerjakan:** `core/scanner.py`, `core/duplicate_finder.py`, `core/organizer.py`.
+- **Daftar Tugas:**
+  1. Mengimplementasikan `FolderScanner` di `core/scanner.py` untuk pemindaian direktori berbasis `pathlib.Path`, penentuan kategori (`determine_category`), placeholder ekstraksi teks dokumen (`extract_document_hint`), dan penamaan file pintar (`propose_smart_name`).
+  2. Mengimplementasikan `DuplicateFinder` di `core/duplicate_finder.py` untuk perhitungan hash SHA-256 per *chunk* (`calculate_file_hash`), penandaan file duplikat ke `_Karantina_Duplikat/` (`mark_duplicates`), deteksi installer usang (`detect_obsolete_installers`), serta kalkulasi penghematan ruang (`calculate_wasted_space`).
+  3. Mengimplementasikan `SafeFileOrganizer` di `core/organizer.py` untuk inisialisasi otomatis `data/undo_history.json`, penanganan konflik nama file (`_1`, `_2`), eksekusi pemindahan dan karantina (`execute_plan`), pemulihan 100% file via Undo (`undo_last_operation`), serta pembuangan isi karantina ke *Recycle Bin* (`empty_quarantine_to_trash` via `send2trash`).
 - **Rekomendasi pesan commit:** `feat(core): add skeleton classes for scanner, duplicate analyzer, and safe organizer`
 
 ### Fase 3: Antarmuka PyQt6 Modern, Auto-Scan UX, QSS & Background Worker
-- **File yang dibuat:** `ui/__init__.py`, `ui/styles.qss`, `ui/widgets.py`, `ui/worker.py`, `ui/main_window.py`, `main.py`.
+- **File yang dikerjakan:** `ui/__init__.py`, `ui/styles.qss`, `ui/widgets.py`, `ui/worker.py`, `ui/main_window.py`, `main.py`.
+- **Daftar Tugas:**
+  1. Menyusun lembar gaya terpusat di `ui/styles.qss` (palet warna `#F8FAFC`, `#FFFFFF`, `#2563EB`, sudut membulat `8px`/`12px`, dan tipografi modern).
+  2. Membuat `DropZoneWidget` (area *drag-and-drop* + tombol **"Pilih Folder Berantakan"**) dan `PreviewTableWidget` (tabel pratinjau 4 kolom dengan badge status berwarna) di `ui/widgets.py`.
+  3. Membuat `ScanWorker` dan `OrganizeWorker` berbasis `QThread` di `ui/worker.py` dengan pelaporan progres *real-time*.
+  4. Membangun `MainWindow` di `ui/main_window.py` (alur *auto-scan* saat folder dipilih, `QProgressBar`, ringkasan ruang hemat, serta bar tombol aksi) dan *entry point* aplikasi di `main.py`.
 - **Rekomendasi pesan commit:** `feat(ui): implement modern PyQt6 interface with auto-scan, real-time progress, and QSS`
 
-### Fase 4: Kerangka Pengujian Unit (`tests/`)
-- **File yang dibuat:** `tests/__init__.py`, `tests/test_scanner.py`, `tests/test_duplicate_finder.py`, `tests/test_organizer.py`.
+### Fase 4: Pengujian Unit (`tests/`)
+- **File yang dikerjakan:** `tests/__init__.py`, `tests/test_scanner.py`, `tests/test_duplicate_finder.py`, `tests/test_organizer.py`.
+- **Daftar Tugas:**
+  1. Membuat pengujian unit `tests/test_scanner.py` untuk menguji pemindaian folder, pengelompokan kategori, dan fallback `propose_smart_name`.
+  2. Membuat pengujian unit `tests/test_duplicate_finder.py` untuk menguji akurasi hash SHA-256, penandaan file kembar ke `_Karantina_Duplikat/`, deteksi installer usang, dan kalkulasi ruang hemat.
+  3. Membuat pengujian unit `tests/test_organizer.py` untuk menguji pemindahan file, resolusi konflik nama (`_1`, `_2`), dan pemulihan transaksi lewat `undo_last_operation()`.
 - **Rekomendasi pesan commit:** `test: add unit test templates for scanner, duplicate finder, and safe organizer`
