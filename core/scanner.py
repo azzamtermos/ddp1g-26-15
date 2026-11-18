@@ -24,10 +24,19 @@ class FolderScanner:
     def __init__(self, rules_path: str = "data/default_rules.json") -> None:
         """Menginisialisasi pemindai folder dan memuat aturan kategori dari file JSON.
 
+        Jika `rules_path` berupa path relatif dan tidak ditemukan dari direktori
+        kerja saat ini (misalnya saat `pytest` dijalankan dari luar root proyek),
+        path akan dicari relatif terhadap folder utama proyek.
+
         Args:
             rules_path: Alamat relatif atau absolut menuju file konfigurasi JSON.
         """
-        self.rules_path: Path = Path(rules_path)
+        raw_path = Path(rules_path)
+        if not raw_path.is_absolute() and not raw_path.exists():
+            project_root = Path(__file__).resolve().parent.parent
+            self.rules_path: Path = project_root / raw_path
+        else:
+            self.rules_path = raw_path
         self.rules_data: dict[str, Any] = self._load_rules()
 
     def _load_rules(self) -> dict[str, Any]:
@@ -46,7 +55,56 @@ class FolderScanner:
         return {
             "quarantine_folder": "_Karantina_Duplikat",
             "default_category": "Lainnya",
-            "categories": {},
+            "categories": {
+                "Dokumen_Ajar": {
+                    "extensions": [".pdf", ".doc", ".docx", ".odt", ".rtf", ".txt"],
+                    "keywords": [
+                        "rpp",
+                        "silabus",
+                        "modul",
+                        "materi",
+                        "soal",
+                        "ujian",
+                        "kuis",
+                        "bahan_ajar",
+                        "kurikulum",
+                        "lkpd",
+                    ],
+                },
+                "Administrasi_Nilai": {
+                    "extensions": [".xls", ".xlsx", ".csv", ".ods"],
+                    "keywords": [
+                        "nilai",
+                        "rekap",
+                        "absen",
+                        "presensi",
+                        "rapor",
+                        "jadwal",
+                        "daftar_hadir",
+                        "anggaran",
+                    ],
+                },
+                "Presentasi_Materi": {
+                    "extensions": [".ppt", ".pptx", ".odp", ".key"],
+                    "keywords": ["presentasi", "slide", "paparan", "pertemuan"],
+                },
+                "Gambar_Media": {
+                    "extensions": [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp"],
+                    "keywords": ["foto", "dokumentasi", "poster", "infografis", "sertifikat"],
+                },
+                "Video_Audio": {
+                    "extensions": [".mp4", ".mkv", ".avi", ".mov", ".mp3", ".wav", ".m4a"],
+                    "keywords": ["rekaman", "video", "pembelajaran", "audio"],
+                },
+                "Arsip_Kompresi": {
+                    "extensions": [".zip", ".rar", ".7z", ".tar", ".gz"],
+                    "keywords": ["arsip", "backup", "kumpulan"],
+                },
+                "Installer_Aplikasi": {
+                    "extensions": [".exe", ".msi", ".dmg", ".deb", ".apk", ".appimage"],
+                    "keywords": ["setup", "installer", "install"],
+                },
+            },
         }
 
     def scan_directory(

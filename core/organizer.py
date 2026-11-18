@@ -32,7 +32,12 @@ class SafeFileOrganizer:
         Args:
             undo_log_path: Alamat relatif atau absolut menuju file log transaksi JSON.
         """
-        self.undo_log_path: Path = Path(undo_log_path)
+        raw_path = Path(undo_log_path)
+        if not raw_path.is_absolute():
+            project_root = Path(__file__).resolve().parent.parent
+            self.undo_log_path: Path = project_root / raw_path
+        else:
+            self.undo_log_path = raw_path
         self._ensure_undo_log_exists()
 
     def _ensure_undo_log_exists(self) -> None:
