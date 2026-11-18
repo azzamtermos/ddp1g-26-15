@@ -25,3 +25,6 @@ htmlcov/
 Thumbs.db
 .vscode/
 .idea/
+
+# Demo sandbox folder
+demo_sandbox/
