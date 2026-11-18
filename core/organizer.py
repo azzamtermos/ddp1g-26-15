@@ -75,15 +75,24 @@ class SafeFileOrganizer:
                 return candidate
             counter += 1
 
-    def save_undo_log(self, transactions: list[dict[str, str]]) -> None:
-        """Menyimpan daftar catatan transaksi perpindahan file ke `data/undo_history.json`.
+    def save_undo_log(
+        self,
+        transactions: list[dict[str, str]],
+        created_dirs: list[str] | None = None,
+    ) -> None:
+        """Menyimpan daftar catatan transaksi dan folder baru ke `data/undo_history.json`.
 
         Args:
             transactions: Daftar dictionary berisi `old_path`, `new_path`, dan `timestamp`.
+            created_dirs: Daftar alamat folder yang baru dibuat saat eksekusi (opsional).
         """
         self._ensure_undo_log_exists()
         try:
-            content = json.dumps(transactions, indent=2, ensure_ascii=False)
+            payload = {
+                "transactions": transactions,
+                "created_dirs": created_dirs or [],
+            }
+            content = json.dumps(payload, indent=2, ensure_ascii=False)
             self.undo_log_path.write_text(content, encoding="utf-8")
         except OSError:
             pass
@@ -97,7 +106,7 @@ class SafeFileOrganizer:
 
         Seluruh perpindahan file (termasuk file duplikat yang masuk ke `_Karantina_Duplikat/`)
         dilakukan dengan `pathlib.Path.rename()` dan dicatat ke `data/undo_history.json`
-        sehingga 100% file dapat dikembalikan menggunakan fitur Undo.
+        beserta daftar folder baru (`created_dirs`) sehingga 100% dapat dipulihkan lewat Undo.
 
         Args:
             items: Daftar `FilePlanItem` yang akan dipindahkan.
@@ -114,6 +123,7 @@ class SafeFileOrganizer:
         success_count = 0
         errors: list[str] = []
         transactions: list[dict[str, str]] = []
+        created_dirs: list[str] = []
         timestamp_now = datetime.now().isoformat(timespec="seconds")
 
         for index, item in enumerate(items, start=1):
@@ -123,8 +133,14 @@ class SafeFileOrganizer:
                 continue
 
             desired_target = Path(item.proposed_path)
+            target_dir = desired_target.parent
             try:
-                desired_target.parent.mkdir(parents=True, exist_ok=True)
+                if not target_dir.exists():
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    target_dir_str = str(target_dir)
+                    if target_dir_str not in created_dirs:
+                        created_dirs.append(target_dir_str)
+
                 final_target = self.resolve_conflict_path(desired_target)
                 source_path.rename(final_target)
 
@@ -150,16 +166,17 @@ class SafeFileOrganizer:
                 )
 
         if transactions:
-            self.save_undo_log(transactions)
+            self.save_undo_log(transactions, created_dirs=created_dirs)
 
         return success_count, errors
 
     def undo_last_operation(self) -> tuple[int, list[str]]:
         """Mengembalikan seluruh file dari transaksi terakhir ke lokasi dan nama aslinya.
 
-        Membaca catatan dari `data/undo_history.json` secara terbalik (LIFO),
-        memulihkan file dari `new_path` ke `old_path` menggunakan `pathlib.Path.rename()`,
-        serta mengosongkan log transaksi setelah selesai.
+        Membaca catatan dari `data/undo_history.json` (mendukung format objek baru maupun
+        list lama), memulihkan file dari `new_path` ke `old_path` secara terbalik (LIFO)
+        menggunakan `pathlib.Path.rename()`, serta menghapus folder di `created_dirs`
+        yang benar-benar kosong menggunakan `Path.rmdir()`.
 
         Returns:
             Tuple berisi `(jumlah_dipulihkan, daftar_pesan_error)`.
@@ -167,9 +184,19 @@ class SafeFileOrganizer:
         self._ensure_undo_log_exists()
         try:
             raw_content = self.undo_log_path.read_text(encoding="utf-8")
-            transactions: list[dict[str, str]] = json.loads(raw_content)
+            parsed_data = json.loads(raw_content)
         except (OSError, json.JSONDecodeError):
             return 0, ["Gagal membaca file riwayat Undo."]
+
+        if isinstance(parsed_data, dict):
+            transactions: list[dict[str, str]] = parsed_data.get("transactions", [])
+            created_dirs: list[str] = parsed_data.get("created_dirs", [])
+        elif isinstance(parsed_data, list):
+            transactions = parsed_data
+            created_dirs = []
+        else:
+            transactions = []
+            created_dirs = []
 
         if not transactions:
             return 0, ["Tidak ada riwayat perapian yang dapat dibatalkan."]
@@ -200,7 +227,27 @@ class SafeFileOrganizer:
                 errors.append(f"Gagal mengembalikan '{new_path.name}': {exc}")
                 remaining_transactions.append(entry)
 
-        self.save_undo_log(list(reversed(remaining_transactions)))
+        # Bersihkan folder yang baru dibuat jika sudah benar-benar kosong (terdalam ke terpendek)
+        remaining_dirs: list[str] = []
+        for dir_str in sorted(
+            created_dirs,
+            key=lambda p: (len(Path(p).parts), len(p)),
+            reverse=True,
+        ):
+            dir_path = Path(dir_str)
+            try:
+                if dir_path.exists() and dir_path.is_dir():
+                    if not any(dir_path.iterdir()):
+                        dir_path.rmdir()
+                    else:
+                        remaining_dirs.append(dir_str)
+            except OSError:
+                remaining_dirs.append(dir_str)
+
+        self.save_undo_log(
+            list(reversed(remaining_transactions)),
+            created_dirs=remaining_dirs if remaining_transactions else [],
+        )
         return restored_count, errors
 
     def empty_quarantine_to_trash(self, base_folder_path: str) -> tuple[int, list[str]]:

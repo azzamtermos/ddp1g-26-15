@@ -125,3 +125,59 @@ def test_empty_quarantine_to_trash_uses_send2trash_mock(
     assert len(trashed_paths) == 2
     assert str(dup_file_1) in trashed_paths
     assert str(dup_file_2) in trashed_paths
+
+
+def test_undo_removes_newly_created_empty_dirs_but_keeps_non_empty_dirs(
+    tmp_path: Path,
+) -> None:
+    """Memastikan Undo menghapus folder kategori baru yang kosong namun mempertahankan folder yang masih berisi file."""
+    undo_log = tmp_path / "data" / "undo_history.json"
+    organizer = SafeFileOrganizer(undo_log_path=str(undo_log))
+
+    file_a = tmp_path / "Materi_Python.pdf"
+    file_b = tmp_path / "Rekap_Nilai.xlsx"
+    file_a.write_text("Materi", encoding="utf-8")
+    file_b.write_text("Nilai", encoding="utf-8")
+
+    dir_dokumen = tmp_path / "Dokumen_Ajar"
+    dir_nilai = tmp_path / "Administrasi_Nilai"
+
+    items = [
+        FilePlanItem(
+            source_path=str(file_a),
+            file_name=file_a.name,
+            proposed_name=file_a.name,
+            file_size=6,
+            category="Dokumen_Ajar",
+            proposed_path=str(dir_dokumen / file_a.name),
+        ),
+        FilePlanItem(
+            source_path=str(file_b),
+            file_name=file_b.name,
+            proposed_name=file_b.name,
+            file_size=5,
+            category="Administrasi_Nilai",
+            proposed_path=str(dir_nilai / file_b.name),
+        ),
+    ]
+
+    moved_count, errors = organizer.execute_plan(items)
+    assert moved_count == 2
+    assert errors == []
+    assert dir_dokumen.exists()
+    assert dir_nilai.exists()
+
+    # Tambahkan 1 file lain ke dalam Administrasi_Nilai agar folder tersebut tidak kosong saat Undo
+    extra_file = dir_nilai / "File_Tambahan_Manual.xlsx"
+    extra_file.write_text("Jangan dihapus", encoding="utf-8")
+
+    restored_count, undo_errors = organizer.undo_last_operation()
+    assert restored_count == 2
+    assert undo_errors == []
+
+    # (a) Folder Dokumen_Ajar harus ikut terhapus karena baru dibuat dan kini kosong
+    assert not dir_dokumen.exists()
+
+    # (b) Folder Administrasi_Nilai TIDAK boleh terhapus karena masih ada extra_file di dalamnya
+    assert dir_nilai.exists()
+    assert extra_file.exists()
