@@ -1,32 +1,99 @@
 """Modul pendeteksi file duplikat (SHA-256), installer usang, dan kalkulator ruang penyimpanan.
 
 Bertanggung jawab melakukan pengecekan duplikat dua tahap (ukuran file + hash SHA-256
-per chunk), menandai file installer atau sementara yang sudah usang, serta menghitung
+per chunk), menandai file installer atau sementara yang sudah usang berdasarkan aturan
+berbasis data di `data/default_rules.json` dan `data/text_rules.json`, serta menghitung
 estimasi penghematan ruang penyimpanan.
 """
 
 from collections.abc import Callable
 import hashlib
+import json
 from pathlib import Path
+import re
 import time
+from typing import Any
 
 from core.models import FilePlanItem
 
 
 class DuplicateFinder:
-    """Kelas untuk mendeteksi file duplikat, installer usang, dan potensi ruang hemat."""
+    """Kelas untuk mendeteksi file duplikat, installer usang, dan potensi ruang hemat.
 
-    QUARANTINE_FOLDER: str = "_Karantina_Duplikat"
-    OBSOLETE_EXTENSIONS: tuple[str, ...] = (
-        ".exe",
-        ".msi",
-        ".dmg",
-        ".deb",
-        ".apk",
-        ".tmp",
-        ".crdownload",
-        ".part",
-    )
+    Mematuhi aturan `data-driven-rules`: daftar ekstensi usang, batas hari, nama folder
+    karantina, dan pola penanda duplikat dimuat satu kali di `__init__()` dari folder `data/`.
+    """
+
+    def __init__(
+        self,
+        rules_path: str = "data/default_rules.json",
+        text_rules_path: str = "data/text_rules.json",
+    ) -> None:
+        """Menginisialisasi pendeteksi duplikat dan memuat aturan JSON satu kali.
+
+        Args:
+            rules_path: Alamat relatif atau absolut menuju `data/default_rules.json`.
+            text_rules_path: Alamat relatif atau absolut menuju `data/text_rules.json`.
+        """
+        self.rules_path: Path = self._resolve_data_path(rules_path)
+        self.text_rules_path: Path = self._resolve_data_path(text_rules_path)
+
+        rules_data = self._load_json(
+            self.rules_path,
+            fallback={
+                "quarantine_folder": "_Karantina_Duplikat",
+                "obsolete_extensions": [],
+                "obsolete_age_days": 30,
+            },
+        )
+        text_rules_data = self._load_json(
+            self.text_rules_path,
+            fallback={"duplicate_markers": []},
+        )
+
+        self.quarantine_folder: str = str(
+            rules_data.get("quarantine_folder", "_Karantina_Duplikat")
+        )
+        self.obsolete_extensions: set[str] = {
+            str(ext).lower() for ext in rules_data.get("obsolete_extensions", [])
+        }
+        self.default_obsolete_age_days: int = int(rules_data.get("obsolete_age_days", 30))
+        self.duplicate_markers: list[re.Pattern[str]] = self._compile_patterns(
+            text_rules_data.get("duplicate_markers", [])
+        )
+
+    @staticmethod
+    def _resolve_data_path(file_path: str) -> Path:
+        """Meresolusi path relatif terhadap root proyek agar aman dijalankan dari mana pun."""
+        raw_path = Path(file_path)
+        if not raw_path.is_absolute() and not raw_path.exists():
+            project_root = Path(__file__).resolve().parent.parent
+            return project_root / raw_path
+        return raw_path
+
+    @staticmethod
+    def _load_json(path: Path, fallback: dict[str, Any]) -> dict[str, Any]:
+        """Memuat file JSON dengan fallback minimalis yang aman jika file hilang atau rusak."""
+        if path.exists() and path.is_file():
+            try:
+                content = path.read_text(encoding="utf-8")
+                parsed = json.loads(content)
+                if isinstance(parsed, dict):
+                    return parsed
+            except (OSError, json.JSONDecodeError):
+                pass
+        return fallback
+
+    @staticmethod
+    def _compile_patterns(patterns: list[Any]) -> list[re.Pattern[str]]:
+        """Mengompilasi daftar string regex secara aman (mengabaikan pola tidak valid)."""
+        compiled: list[re.Pattern[str]] = []
+        for raw_pattern in patterns:
+            try:
+                compiled.append(re.compile(str(raw_pattern), re.IGNORECASE))
+            except re.error:
+                continue
+        return compiled
 
     def calculate_file_hash(self, file_path: Path, chunk_size: int = 65536) -> str:
         """Menghitung nilai hash SHA-256 dari isi file secara bertahap per chunk.
@@ -59,8 +126,8 @@ class DuplicateFinder:
 
         File yang terdeteksi memiliki isi identik dengan file sebelumnya akan ditandai:
         - `is_duplicate = True`
-        - `category = "_Karantina_Duplikat"`
-        - `proposed_path` diarahkan ke dalam subfolder `_Karantina_Duplikat/`
+        - `category = "_Karantina_Duplikat"` (sesuai `quarantine_folder` di JSON)
+        - `proposed_path` diarahkan ke dalam subfolder karantina
         - `status_label = "File Duplikat"`
 
         Args:
@@ -104,8 +171,10 @@ class DuplicateFinder:
                 key = (item.file_size, file_hash)
                 if key in seen_hashes:
                     item.is_duplicate = True
-                    item.category = self.QUARANTINE_FOLDER
-                    quarantine_target = source.parent / self.QUARANTINE_FOLDER / item.proposed_name
+                    item.category = self.quarantine_folder
+                    quarantine_target = (
+                        source.parent / self.quarantine_folder / item.proposed_name
+                    )
                     item.proposed_path = str(quarantine_target)
                     item.status_label = "File Duplikat"
                 else:
@@ -123,30 +192,35 @@ class DuplicateFinder:
     def detect_obsolete_installers(
         self,
         items: list[FilePlanItem],
-        age_days: int = 30,
+        age_days: int | None = None,
     ) -> list[FilePlanItem]:
         """Mendeteksi file installer atau file sementara yang usianya melebihi batas hari.
 
         File yang belum berstatus duplikat namun berekstensi installer/sementara
-        dan berumur lebih tua dari `age_days` akan ditandai dengan
-        `is_obsolete_temp = True` dan `status_label = "Installer Usang"`.
+        (sesuai `obsolete_extensions` di `data/default_rules.json`) dan berumur lebih
+        tua dari `age_days` akan ditandai dengan `is_obsolete_temp = True` dan
+        `status_label = "Installer Usang"`.
 
         Args:
             items: Daftar `FilePlanItem` yang akan diperiksa.
-            age_days: Batas usia file dalam hari untuk dianggap usang (default: 30 hari).
+            age_days: Batas usia file dalam hari untuk dianggap usang. Jika `None`,
+                menggunakan nilai `obsolete_age_days` dari `data/default_rules.json`.
 
         Returns:
             Daftar `FilePlanItem` yang telah diperbarui penanda installer usangnya.
         """
+        effective_age_days = (
+            self.default_obsolete_age_days if age_days is None else age_days
+        )
         now = time.time()
-        age_threshold_seconds = age_days * 86400
+        age_threshold_seconds = effective_age_days * 86400
 
         for item in items:
             if item.is_duplicate:
                 continue
 
             source = Path(item.source_path)
-            if source.suffix.lower() in self.OBSOLETE_EXTENSIONS:
+            if source.suffix.lower() in self.obsolete_extensions:
                 try:
                     mtime = source.stat().st_mtime
                     if (now - mtime) >= age_threshold_seconds:
@@ -174,7 +248,9 @@ class DuplicateFinder:
             - `formatted_size` (str): Teks ukuran ramah pengguna (misal: '12.4 MB').
         """
         duplicate_count = sum(1 for item in items if item.is_duplicate)
-        obsolete_count = sum(1 for item in items if item.is_obsolete_temp and not item.is_duplicate)
+        obsolete_count = sum(
+            1 for item in items if item.is_obsolete_temp and not item.is_duplicate
+        )
         total_bytes = sum(
             item.file_size
             for item in items

@@ -1,0 +1,45 @@
+{
+  "generic_filename_patterns": [
+    "^document\\s*(\\(\\d+\\))?$",
+    "^img[_-]?\\d+.*$",
+    "^whatsapp\\s+image.*$",
+    "^scan[_-]?\\d*.*$",
+    "^untitled.*$",
+    "^new\\s+document.*$",
+    "^screenshot.*$",
+    "^file[_-]?\\d+$"
+  ],
+  "document_title_whitelist": [
+    "rpp",
+    "rencana pelaksanaan pembelajaran",
+    "silabus",
+    "modul ajar",
+    "modul",
+    "lkpd",
+    "lembar kerja",
+    "soal",
+    "ujian",
+    "penilaian",
+    "kurikulum",
+    "rekap nilai",
+    "daftar hadir",
+    "jadwal",
+    "sertifikat",
+    "surat tugas"
+  ],
+  "letterhead_filter_patterns": [
+    "^pemerintah\\s+(kabupaten|kota|provinsi)\\b",
+    "^kementerian\\s+",
+    "^dinas\\s+pendidikan\\b",
+    "^(jalan|jl\\.)\\s+",
+    "^(telp|telepon|fax|email|website|laman)\\b",
+    "^npsn\\b",
+    "^kode\\s+pos\\b"
+  ],
+  "duplicate_markers": [
+    "\\(\\d+\\)$",
+    "[\\s_-]+copy(\\s*\\d*)?$",
+    "[\\s_-]+salinan(\\s*\\d*)?$",
+    "[\\s_-]+duplikat(\\s*\\d*)?$"
+  ]
+}

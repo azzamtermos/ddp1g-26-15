@@ -1,13 +1,14 @@
 """Modul pemindai direktori, kategorisasi pintar, dan AI Hybrid Smart Renaming.
 
 Bertanggung jawab memindai folder berantakan, menentukan kategori tujuan
-berdasarkan aturan di data/default_rules.json, serta menyiapkan kerangka
-ekstraksi teks dokumen dan usulan nama file pintar.
+berdasarkan aturan berbasis data di `data/default_rules.json` dan `data/text_rules.json`,
+serta menyiapkan kerangka ekstraksi teks dokumen dan usulan nama file pintar.
 """
 
 from collections.abc import Callable
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 from core.models import FilePlanItem
@@ -16,96 +17,105 @@ from core.models import FilePlanItem
 class FolderScanner:
     """Kelas untuk memindai folder dan menyusun rencana perapian file (FilePlanItem).
 
+    Mematuhi aturan `data-driven-rules`: seluruh daftar kata kunci, ekstensi,
+    dan pola regex dimuat satu kali saat inisialisasi dari file JSON di `data/`.
+
     Attributes:
         rules_path: Objek Path menuju file JSON aturan pengelompokan kategori.
-        rules_data: Dictionary berisi aturan kategori, ekstensi, dan kata kunci.
+        text_rules_path: Objek Path menuju file JSON aturan pola teks dan penamaan.
+        rules_data: Dictionary mentah hasil pembacaan `default_rules.json`.
+        text_rules_data: Dictionary mentah hasil pembacaan `text_rules.json`.
     """
 
-    def __init__(self, rules_path: str = "data/default_rules.json") -> None:
-        """Menginisialisasi pemindai folder dan memuat aturan kategori dari file JSON.
-
-        Jika `rules_path` berupa path relatif dan tidak ditemukan dari direktori
-        kerja saat ini (misalnya saat `pytest` dijalankan dari luar root proyek),
-        path akan dicari relatif terhadap folder utama proyek.
+    def __init__(
+        self,
+        rules_path: str = "data/default_rules.json",
+        text_rules_path: str = "data/text_rules.json",
+    ) -> None:
+        """Menginisialisasi pemindai folder serta memuat seluruh aturan JSON satu kali.
 
         Args:
-            rules_path: Alamat relatif atau absolut menuju file konfigurasi JSON.
+            rules_path: Alamat relatif atau absolut menuju file konfigurasi kategori JSON.
+            text_rules_path: Alamat relatif atau absolut menuju file pola teks JSON.
         """
-        raw_path = Path(rules_path)
+        self.rules_path: Path = self._resolve_data_path(rules_path)
+        self.text_rules_path: Path = self._resolve_data_path(text_rules_path)
+
+        self.rules_data: dict[str, Any] = self._load_json(
+            self.rules_path,
+            fallback={
+                "quarantine_folder": "_Karantina_Duplikat",
+                "default_category": "Lainnya",
+                "categories": {},
+            },
+        )
+        self.text_rules_data: dict[str, Any] = self._load_json(
+            self.text_rules_path,
+            fallback={
+                "generic_filename_patterns": [],
+                "document_title_whitelist": [],
+                "letterhead_filter_patterns": [],
+                "duplicate_markers": [],
+            },
+        )
+
+        # Pre-kompilasi aturan kategori ke set agar cepat saat iterasi file
+        self.default_category: str = str(self.rules_data.get("default_category", "Lainnya"))
+        self.quarantine_folder: str = str(
+            self.rules_data.get("quarantine_folder", "_Karantina_Duplikat")
+        )
+        self._compiled_categories: list[tuple[str, set[str], set[str]]] = []
+        for category_name, rule in self.rules_data.get("categories", {}).items():
+            if not isinstance(rule, dict):
+                continue
+            extensions = {str(e).lower() for e in rule.get("extensions", [])}
+            keywords = {str(kw).lower() for kw in rule.get("keywords", [])}
+            self._compiled_categories.append((str(category_name), extensions, keywords))
+
+        # Pre-kompilasi pola teks & regex satu kali di __init__
+        self.generic_filename_patterns: list[re.Pattern[str]] = self._compile_patterns(
+            self.text_rules_data.get("generic_filename_patterns", [])
+        )
+        self.letterhead_filter_patterns: list[re.Pattern[str]] = self._compile_patterns(
+            self.text_rules_data.get("letterhead_filter_patterns", [])
+        )
+        self.document_title_whitelist: set[str] = {
+            str(item).lower()
+            for item in self.text_rules_data.get("document_title_whitelist", [])
+        }
+
+    @staticmethod
+    def _resolve_data_path(file_path: str) -> Path:
+        """Meresolusi path relatif terhadap root proyek agar aman dijalankan dari mana pun."""
+        raw_path = Path(file_path)
         if not raw_path.is_absolute() and not raw_path.exists():
             project_root = Path(__file__).resolve().parent.parent
-            self.rules_path: Path = project_root / raw_path
-        else:
-            self.rules_path = raw_path
-        self.rules_data: dict[str, Any] = self._load_rules()
+            return project_root / raw_path
+        return raw_path
 
-    def _load_rules(self) -> dict[str, Any]:
-        """Memuat aturan kategori dari file JSON dengan fallback aman jika file tidak ditemukan.
-
-        Returns:
-            Dictionary berisi aturan pengelompokan kategori.
-        """
-        if self.rules_path.exists() and self.rules_path.is_file():
+    @staticmethod
+    def _load_json(path: Path, fallback: dict[str, Any]) -> dict[str, Any]:
+        """Memuat file JSON dengan fallback minimalis yang aman jika file hilang atau rusak."""
+        if path.exists() and path.is_file():
             try:
-                content = self.rules_path.read_text(encoding="utf-8")
-                return json.loads(content)
+                content = path.read_text(encoding="utf-8")
+                parsed = json.loads(content)
+                if isinstance(parsed, dict):
+                    return parsed
             except (OSError, json.JSONDecodeError):
                 pass
+        return fallback
 
-        return {
-            "quarantine_folder": "_Karantina_Duplikat",
-            "default_category": "Lainnya",
-            "categories": {
-                "Dokumen_Ajar": {
-                    "extensions": [".pdf", ".doc", ".docx", ".odt", ".rtf", ".txt"],
-                    "keywords": [
-                        "rpp",
-                        "silabus",
-                        "modul",
-                        "materi",
-                        "soal",
-                        "ujian",
-                        "kuis",
-                        "bahan_ajar",
-                        "kurikulum",
-                        "lkpd",
-                    ],
-                },
-                "Administrasi_Nilai": {
-                    "extensions": [".xls", ".xlsx", ".csv", ".ods"],
-                    "keywords": [
-                        "nilai",
-                        "rekap",
-                        "absen",
-                        "presensi",
-                        "rapor",
-                        "jadwal",
-                        "daftar_hadir",
-                        "anggaran",
-                    ],
-                },
-                "Presentasi_Materi": {
-                    "extensions": [".ppt", ".pptx", ".odp", ".key"],
-                    "keywords": ["presentasi", "slide", "paparan", "pertemuan"],
-                },
-                "Gambar_Media": {
-                    "extensions": [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp"],
-                    "keywords": ["foto", "dokumentasi", "poster", "infografis", "sertifikat"],
-                },
-                "Video_Audio": {
-                    "extensions": [".mp4", ".mkv", ".avi", ".mov", ".mp3", ".wav", ".m4a"],
-                    "keywords": ["rekaman", "video", "pembelajaran", "audio"],
-                },
-                "Arsip_Kompresi": {
-                    "extensions": [".zip", ".rar", ".7z", ".tar", ".gz"],
-                    "keywords": ["arsip", "backup", "kumpulan"],
-                },
-                "Installer_Aplikasi": {
-                    "extensions": [".exe", ".msi", ".dmg", ".deb", ".apk", ".appimage"],
-                    "keywords": ["setup", "installer", "install"],
-                },
-            },
-        }
+    @staticmethod
+    def _compile_patterns(patterns: list[Any]) -> list[re.Pattern[str]]:
+        """Mengompilasi daftar string regex secara aman (mengabaikan pola tidak valid)."""
+        compiled: list[re.Pattern[str]] = []
+        for raw_pattern in patterns:
+            try:
+                compiled.append(re.compile(str(raw_pattern), re.IGNORECASE))
+            except re.error:
+                continue
+        return compiled
 
     def scan_directory(
         self,
@@ -186,32 +196,27 @@ class FolderScanner:
         Returns:
             Nama kategori tujuan (misal: 'Dokumen_Ajar', 'Administrasi_Nilai', atau 'Lainnya').
         """
-        categories: dict[str, dict[str, list[str]]] = self.rules_data.get("categories", {})
-        default_category: str = str(self.rules_data.get("default_category", "Lainnya"))
-
         ext = file_path.suffix.lower()
         stem_lower = file_path.stem.lower()
 
         # Prioritas 1: Kecocokan kata kunci pada nama file sekaligus ekstensi yang relevan
-        for category_name, rule in categories.items():
-            keywords = [kw.lower() for kw in rule.get("keywords", [])]
-            extensions = [e.lower() for e in rule.get("extensions", [])]
+        for category_name, extensions, keywords in self._compiled_categories:
             if ext in extensions and any(kw in stem_lower for kw in keywords):
                 return category_name
 
         # Prioritas 2: Kecocokan berdasarkan ekstensi file
-        for category_name, rule in categories.items():
-            extensions = [e.lower() for e in rule.get("extensions", [])]
+        for category_name, extensions, _ in self._compiled_categories:
             if ext in extensions:
                 return category_name
 
-        return default_category
+        return self.default_category
 
     def extract_document_hint(self, file_path: Path) -> str | None:
         """Mengekstrak cuplikan teks halaman pertama dokumen/PDF untuk membantu penamaan pintar.
 
         Saat ini berfungsi sebagai stub/placeholder aman yang mengembalikan `None`.
-        Dapat dikembangkan menggunakan `pypdf.PdfReader` untuk membaca judul dari halaman pertama PDF.
+        Dapat dikembangkan menggunakan `pypdf.PdfReader` bersama `letterhead_filter_patterns`
+        dan `document_title_whitelist` yang sudah dimuat dari `data/text_rules.json`.
 
         Args:
             file_path: Objek `pathlib.Path` dari file dokumen.
