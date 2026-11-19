@@ -244,9 +244,12 @@ class DuplicateFinder:
                     continue
                 source = Path(item.source_path)
                 item.is_duplicate = True
+                item.is_skipped = False
+                item.suggested_name = None
+                item.proposed_name = item.file_name
                 item.category = self.quarantine_folder
                 quarantine_target = (
-                    source.parent / self.quarantine_folder / item.proposed_name
+                    source.parent / self.quarantine_folder / item.file_name
                 )
                 item.proposed_path = str(quarantine_target)
                 item.status_label = "File Duplikat"

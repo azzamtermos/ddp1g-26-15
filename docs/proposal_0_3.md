@@ -68,11 +68,11 @@ Setiap perubahan kode wajib mematuhi aturan berikut:
   - Perbarui `data/default_rules.json` ke 7 kategori baru + urutan prioritas + pemisahan `exact_keywords` & `partial_keywords` + ekstensi pasti.
   - Lengkapi `data/text_rules.json` (pola nama generik, whitelist judul Aturan A, filter kop surat Aturan B, penanda duplikat).
   - *Checkpoint 1A:* JSON valid, tidak ada duplikasi/konflik kata kunci kritis, tes eksisting tetap jalan atau disesuaikan.
-- [ ] **Partisi 1B — Model Data & Skor Pemenang Duplikat (`core/models.py`, `core/duplicate_finder.py`)**
+- [x] **Partisi 1B — Model Data & Skor Pemenang Duplikat (`core/models.py`, `core/duplicate_finder.py`)**
   - Tambahkan field pendukung rename & skip pada `FileItem` (`suggested_name`, `is_rename_approved`, properti `final_name`, status skip/unrecognized).
   - Terapkan `_score_filename_quality()` di `core/duplicate_finder.py` agar file dengan nama terbaik selalu menang dan tidak masuk `_Karantina_Duplikat`.
   - *Checkpoint 1B:* Tambahkan unit test di `tests/test_duplicate_finder.py` untuk menguji kasus `DOC-WA.pdf` vs `RPP_Matematika.pdf` dan `File.pdf` vs `File (1).pdf`. Semua `pytest -v` lulus.
-- [ ] **Partisi 1C — Mesin Smart Rename `.pdf`/`.docx` & Organizer Safe-Skip (`core/scanner.py`, `core/organizer.py`)**
+- [x] **Partisi 1C — Mesin Smart Rename `.pdf`/`.docx` & Organizer Safe-Skip (`core/scanner.py`, `core/organizer.py`)**
   - Implementasi pencocokan `exact_keywords` (*word boundary*) + prioritas kategori.
   - Implementasi pembacaan teks `.pdf` (`pypdf`) dan `.docx` (`zipfile`/`xml`), filter kop surat Aturan A & B, serta logika *Smart Rename* selektif + status "Dibiarkan" untuk PDF gambar tanpa teks.
   - Pastikan `core/organizer.py` melewati file berstatus "Dibiarkan", mengeksekusi `final_name` saat pemindahan, dan mendukung *graceful skip* saat Undo jika ada file yang sudah berubah di luar aplikasi.
