@@ -181,3 +181,172 @@ def test_undo_removes_newly_created_empty_dirs_but_keeps_non_empty_dirs(
     # (b) Folder Administrasi_Nilai TIDAK boleh terhapus karena masih ada extra_file di dalamnya
     assert dir_nilai.exists()
     assert extra_file.exists()
+
+
+def test_execute_plan_skips_items_marked_is_skipped(tmp_path: Path) -> None:
+    """Memastikan file dengan is_skipped=True dibiarkan di folder asal dan tidak masuk log Undo."""
+    undo_log = tmp_path / "data" / "undo_history.json"
+    organizer = SafeFileOrganizer(undo_log_path=str(undo_log))
+
+    skipped_file = tmp_path / "scan_dokumen.pdf"
+    normal_file = tmp_path / "RPP_Bab1.pdf"
+    skipped_file.write_bytes(b"%PDF-1.4")
+    normal_file.write_bytes(b"RPP")
+
+    items = [
+        FilePlanItem(
+            source_path=str(skipped_file),
+            file_name=skipped_file.name,
+            proposed_name=skipped_file.name,
+            file_size=8,
+            category="Lainnya",
+            proposed_path=str(skipped_file),
+            is_skipped=True,
+            status_label="Dibiarkan (Perlu Cek Manual)",
+        ),
+        FilePlanItem(
+            source_path=str(normal_file),
+            file_name=normal_file.name,
+            proposed_name=normal_file.name,
+            file_size=3,
+            category="Materi_dan_Bahan_Ajar",
+            proposed_path=str(tmp_path / "Materi_dan_Bahan_Ajar" / normal_file.name),
+            is_skipped=False,
+        ),
+    ]
+
+    moved_count, errors = organizer.execute_plan(items)
+
+    assert moved_count == 1
+    assert errors == []
+    assert skipped_file.exists()
+    assert not normal_file.exists()
+    assert (tmp_path / "Materi_dan_Bahan_Ajar" / "RPP_Bab1.pdf").exists()
+    assert "scan_dokumen.pdf" not in undo_log.read_text(encoding="utf-8")
+
+
+def test_execute_plan_applies_final_name_approval_and_undo_restores_original_name(
+    tmp_path: Path,
+) -> None:
+    """Memastikan final_name diterapkan sesuai persetujuan rename dan Undo mengembalikan nama asli."""
+    undo_log = tmp_path / "data" / "undo_history.json"
+    organizer = SafeFileOrganizer(undo_log_path=str(undo_log))
+
+    wa_pdf = tmp_path / "DOC-20261118-WA0004.pdf"
+    doc_docx = tmp_path / "Document (2).docx"
+    dup_pdf = tmp_path / "DOC-20261118-WA0005.pdf"
+
+    wa_pdf.write_bytes(b"undangan")
+    doc_docx.write_bytes(b"modul")
+    dup_pdf.write_bytes(b"undangan")
+
+    items = [
+        FilePlanItem(
+            source_path=str(wa_pdf),
+            file_name=wa_pdf.name,
+            proposed_name="Undangan_Rapat_Komite.pdf",
+            file_size=8,
+            category="Administrasi_dan_Nilai",
+            proposed_path=str(
+                tmp_path / "Administrasi_dan_Nilai" / "Undangan_Rapat_Komite.pdf"
+            ),
+            suggested_name="Undangan_Rapat_Komite.pdf",
+            is_rename_approved=True,
+        ),
+        FilePlanItem(
+            source_path=str(doc_docx),
+            file_name=doc_docx.name,
+            proposed_name="Modul_Ajar_Python.docx",
+            file_size=5,
+            category="Materi_dan_Bahan_Ajar",
+            proposed_path=str(
+                tmp_path / "Materi_dan_Bahan_Ajar" / "Modul_Ajar_Python.docx"
+            ),
+            suggested_name="Modul_Ajar_Python.docx",
+            is_rename_approved=False,
+        ),
+        FilePlanItem(
+            source_path=str(dup_pdf),
+            file_name=dup_pdf.name,
+            proposed_name=dup_pdf.name,
+            file_size=8,
+            category="_Karantina_Duplikat",
+            proposed_path=str(tmp_path / "_Karantina_Duplikat" / dup_pdf.name),
+            is_duplicate=True,
+            suggested_name="Seharusnya_Diabaikan.pdf",
+            is_rename_approved=True,
+            status_label="File Duplikat",
+        ),
+    ]
+
+    moved_count, errors = organizer.execute_plan(items)
+
+    assert moved_count == 3
+    assert errors == []
+    assert (tmp_path / "Administrasi_dan_Nilai" / "Undangan_Rapat_Komite.pdf").exists()
+    assert (tmp_path / "Materi_dan_Bahan_Ajar" / "Document (2).docx").exists()
+    assert (tmp_path / "_Karantina_Duplikat" / "DOC-20261118-WA0005.pdf").exists()
+
+    restored_count, undo_errors = organizer.undo_last_operation()
+
+    assert restored_count == 3
+    assert undo_errors == []
+    assert wa_pdf.exists()
+    assert doc_docx.exists()
+    assert dup_pdf.exists()
+    assert not (tmp_path / "Administrasi_dan_Nilai").exists()
+    assert not (tmp_path / "Materi_dan_Bahan_Ajar").exists()
+    assert not (tmp_path / "_Karantina_Duplikat").exists()
+
+
+def test_undo_graceful_skip_when_file_modified_or_removed_externally(
+    tmp_path: Path,
+) -> None:
+    """Memastikan Undo melewati file yang sudah dipindah manual di luar aplikasi tanpa crash."""
+    undo_log = tmp_path / "data" / "undo_history.json"
+    organizer = SafeFileOrganizer(undo_log_path=str(undo_log))
+
+    file_1 = tmp_path / "DOC-1.pdf"
+    file_2 = tmp_path / "Soal_UTS.pdf"
+    file_1.write_bytes(b"edaran")
+    file_2.write_bytes(b"soal")
+
+    items = [
+        FilePlanItem(
+            source_path=str(file_1),
+            file_name=file_1.name,
+            proposed_name="Surat_Edaran_Sekolah.pdf",
+            file_size=6,
+            category="Administrasi_dan_Nilai",
+            proposed_path=str(
+                tmp_path / "Administrasi_dan_Nilai" / "Surat_Edaran_Sekolah.pdf"
+            ),
+            suggested_name="Surat_Edaran_Sekolah.pdf",
+            is_rename_approved=True,
+        ),
+        FilePlanItem(
+            source_path=str(file_2),
+            file_name=file_2.name,
+            proposed_name=file_2.name,
+            file_size=4,
+            category="Soal_dan_Ujian",
+            proposed_path=str(tmp_path / "Soal_dan_Ujian" / file_2.name),
+        ),
+    ]
+
+    moved_count, errors = organizer.execute_plan(items)
+    assert moved_count == 2
+    assert errors == []
+
+    # Simulasi pengguna memindahkan file kedua secara manual di luar aplikasi
+    moved_target = tmp_path / "Soal_dan_Ujian" / "Soal_UTS.pdf"
+    moved_target.rename(tmp_path / "dipindah_manual.pdf")
+
+    restored_count, notes = organizer.undo_last_operation()
+
+    assert restored_count == 1
+    assert file_1.exists()
+    assert not (tmp_path / "Administrasi_dan_Nilai").exists()
+    assert not (tmp_path / "Soal_dan_Ujian").exists()
+    assert organizer.last_undo_skipped_count == 1
+    assert any("1 file dilewati" in msg for msg in notes)

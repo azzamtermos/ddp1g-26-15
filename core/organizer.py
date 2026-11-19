@@ -38,6 +38,7 @@ class SafeFileOrganizer:
             self.undo_log_path: Path = project_root / raw_path
         else:
             self.undo_log_path = raw_path
+        self.last_undo_skipped_count: int = 0
         self._ensure_undo_log_exists()
 
     def _ensure_undo_log_exists(self) -> None:
@@ -127,13 +128,24 @@ class SafeFileOrganizer:
         timestamp_now = datetime.now().isoformat(timespec="seconds")
 
         for index, item in enumerate(items, start=1):
+            if item.is_skipped:
+                if progress_callback is not None:
+                    percent = int((index / total_items) * 100)
+                    progress_callback(
+                        percent,
+                        f"Melewati file cek manual ({index}/{total_items}): {item.file_name}",
+                    )
+                continue
+
             source_path = Path(item.source_path)
             if not source_path.exists():
                 errors.append(f"File tidak ditemukan: {item.file_name}")
                 continue
 
-            desired_target = Path(item.proposed_path)
-            target_dir = desired_target.parent
+            target_dir = Path(item.proposed_path).parent
+            target_name = item.file_name if item.is_duplicate else item.final_name
+            desired_target = target_dir / target_name
+
             try:
                 if not target_dir.exists():
                     target_dir.mkdir(parents=True, exist_ok=True)
@@ -175,12 +187,14 @@ class SafeFileOrganizer:
 
         Membaca catatan dari `data/undo_history.json` (mendukung format objek baru maupun
         list lama), memulihkan file dari `new_path` ke `old_path` secara terbalik (LIFO)
-        menggunakan `pathlib.Path.rename()`, serta menghapus folder di `created_dirs`
+        menggunakan `pathlib.Path.rename()`, melakukan graceful skip jika ada file yang
+        sudah berubah/hilang di luar aplikasi, serta menghapus folder di `created_dirs`
         yang benar-benar kosong menggunakan `Path.rmdir()`.
 
         Returns:
-            Tuple berisi `(jumlah_dipulihkan, daftar_pesan_error)`.
+            Tuple berisi `(jumlah_dipulihkan, daftar_catatan_atau_error)`.
         """
+        self.last_undo_skipped_count = 0
         self._ensure_undo_log_exists()
         try:
             raw_content = self.undo_log_path.read_text(encoding="utf-8")
@@ -202,6 +216,8 @@ class SafeFileOrganizer:
             return 0, ["Tidak ada riwayat perapian yang dapat dibatalkan."]
 
         restored_count = 0
+        skipped_count = 0
+        skipped_notes: list[str] = []
         errors: list[str] = []
         remaining_transactions: list[dict[str, str]] = []
 
@@ -210,7 +226,10 @@ class SafeFileOrganizer:
             new_path = Path(entry.get("new_path", ""))
 
             if not new_path.exists():
-                errors.append(f"File '{new_path.name}' sudah dipindahkan atau dihapus dari lokasi tujuan.")
+                skipped_count += 1
+                skipped_notes.append(
+                    f"Melewati '{new_path.name}' karena sudah diubah, dipindah, atau dihapus secara manual."
+                )
                 continue
 
             try:
@@ -248,6 +267,15 @@ class SafeFileOrganizer:
             list(reversed(remaining_transactions)),
             created_dirs=remaining_dirs if remaining_transactions else [],
         )
+
+        self.last_undo_skipped_count = skipped_count
+        if skipped_count > 0:
+            summary_note = (
+                f"{skipped_count} file dilewati karena sudah diubah atau dipindahkan "
+                "secara manual di luar aplikasi."
+            )
+            return restored_count, [summary_note, *skipped_notes, *errors]
+
         return restored_count, errors
 
     def empty_quarantine_to_trash(self, base_folder_path: str) -> tuple[int, list[str]]:
@@ -289,3 +317,6 @@ class SafeFileOrganizer:
                 errors.append(f"Gagal membuang '{entry.name}' ke Sampah: {exc}")
 
         return trashed_count, errors
+
+
+FileOrganizer = SafeFileOrganizer
