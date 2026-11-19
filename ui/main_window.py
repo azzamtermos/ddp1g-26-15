@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 )
 
 from core.models import FilePlanItem
-from ui.widgets import DropZoneWidget, PreviewTableWidget
+from ui.widgets import DropZoneWidget, PreviewTableWidget, RenameBannerWidget
 from ui.worker import OrganizeWorker, ScanWorker
 
 
@@ -101,7 +101,11 @@ class MainWindow(QMainWindow):
         summary_layout.addWidget(self.progress_bar)
         main_layout.addWidget(self.summary_card)
 
-        # 4. Tabel Pratinjau Rencana Perapian
+        # 4. Banner Persetujuan Massal Usulan Rename (tampil otomatis jika ada usulan)
+        self.rename_banner = RenameBannerWidget(self)
+        main_layout.addWidget(self.rename_banner)
+
+        # 5. Tabel Pratinjau Rencana Perapian
         self.preview_table = PreviewTableWidget(self)
         main_layout.addWidget(self.preview_table, stretch=1)
 
@@ -139,6 +143,14 @@ class MainWindow(QMainWindow):
     def _connect_signals(self) -> None:
         """Menghubungkan sinyal dari widget dan tombol ke slot penangan di MainWindow."""
         self.drop_zone.folder_selected.connect(self._on_folder_selected)
+        self.rename_banner.accept_all_clicked.connect(
+            lambda: self.preview_table.set_all_renames_approved(True)
+        )
+        self.rename_banner.reject_all_clicked.connect(
+            lambda: self.preview_table.set_all_renames_approved(False)
+        )
+        self.preview_table.rename_approval_changed.connect(self._sync_rename_banner)
+        self.preview_table.selection_changed.connect(self._sync_organize_button_state)
         self.refresh_button.clicked.connect(self.start_scan)
         self.organize_button.clicked.connect(self.start_organize)
         self.undo_button.clicked.connect(self.start_undo)
@@ -151,13 +163,30 @@ class MainWindow(QMainWindow):
         self.empty_quarantine_button.setEnabled(True)
         self.start_scan()
 
+    def _sync_rename_banner(self) -> None:
+        """Menyelaraskan informasi dan visibilitas banner massal usulan rename."""
+        total, approved = self.preview_table.get_rename_suggestion_counts()
+        self.rename_banner.update_counts(total, approved)
+
+    def _sync_organize_button_state(self) -> None:
+        """Menyelaraskan status tombol eksekusi berdasarkan item yang dicentang."""
+        scan_busy = self.scan_worker is not None and self.scan_worker.isRunning()
+        org_busy = self.organize_worker is not None and self.organize_worker.isRunning()
+        if scan_busy or org_busy:
+            self.organize_button.setEnabled(False)
+            return
+        self.organize_button.setEnabled(bool(self.preview_table.get_selected_items()))
+
     def _set_controls_busy(self, busy: bool) -> None:
         """Mengatur status aktif/nonaktif tombol selama proses background thread berjalan."""
         self.drop_zone.browse_button.setEnabled(not busy)
         self.refresh_button.setEnabled(not busy and bool(self.current_folder))
-        self.organize_button.setEnabled(not busy and bool(self.current_items))
+        self.organize_button.setEnabled(
+            not busy and bool(self.preview_table.get_selected_items())
+        )
         self.undo_button.setEnabled(not busy)
         self.empty_quarantine_button.setEnabled(not busy and bool(self.current_folder))
+        self.rename_banner.set_buttons_enabled(not busy)
 
     def start_scan(self) -> None:
         """Memulai ScanWorker di background thread untuk memindai folder yang sedang aktif."""
@@ -166,6 +195,7 @@ class MainWindow(QMainWindow):
         if self.scan_worker is not None and self.scan_worker.isRunning():
             return
 
+        self.rename_banner.setVisible(False)
         self._set_controls_busy(True)
         self.progress_bar.setValue(0)
         self.status_progress_label.setText("Memindai folder...")
@@ -189,6 +219,7 @@ class MainWindow(QMainWindow):
         """Menampilkan daftar hasil pemindaian ke tabel pratinjau dan ringkasan ruang hemat."""
         self.current_items = items
         self.preview_table.populate_items(items)
+        self._sync_rename_banner()
 
         dup_count = wasted_space_info.get("duplicate_count", 0)
         obs_count = wasted_space_info.get("obsolete_count", 0)
@@ -203,8 +234,9 @@ class MainWindow(QMainWindow):
         self._set_controls_busy(False)
 
     def start_organize(self) -> None:
-        """Memulai OrganizeWorker untuk merapikan file ke kategori tujuan dan karantina."""
-        if not self.current_items:
+        """Memulai OrganizeWorker untuk merapikan file yang dicentang ke kategori dan karantina."""
+        selected_items = self.preview_table.get_selected_items()
+        if not selected_items:
             return
         if self.organize_worker is not None and self.organize_worker.isRunning():
             return
@@ -212,7 +244,7 @@ class MainWindow(QMainWindow):
         self._set_controls_busy(True)
         self.organize_worker = OrganizeWorker(
             mode="organize",
-            items=self.current_items,
+            items=selected_items,
             base_folder_path=self.current_folder,
             parent=self,
         )
