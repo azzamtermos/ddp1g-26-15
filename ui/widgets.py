@@ -78,6 +78,9 @@ class DropZoneWidget(QFrame):
 
     def set_selected_folder_text(self, folder_path: str) -> None:
         """Memperbarui teks indikator alamat folder yang sedang aktif."""
+        if not folder_path:
+            self.selected_folder_label.setText("Belum ada folder yang dipilih")
+            return
         self.selected_folder_label.setText(f"Folder aktif: {folder_path}")
 
     def _on_browse_clicked(self) -> None:
@@ -89,7 +92,6 @@ class DropZoneWidget(QFrame):
             QFileDialog.Option.ShowDirsOnly,
         )
         if folder_path:
-            self.set_selected_folder_text(folder_path)
             self.folder_selected.emit(folder_path)
 
     def dragEnterEvent(self, event: QDragEnterEvent | None) -> None:
@@ -126,7 +128,6 @@ class DropZoneWidget(QFrame):
                 local_path = url.toLocalFile()
                 if local_path and QFileInfo(local_path).isDir():
                     event.acceptProposedAction()
-                    self.set_selected_folder_text(local_path)
                     self.folder_selected.emit(local_path)
                     return
 
@@ -182,7 +183,7 @@ class RenameBannerWidget(QFrame):
             return
 
         self.info_label.setText(
-            f"Ditemukan {total_suggestions} usulan penamaan ulang otomatis dari isi dokumen "
+            f"Ditemukan {total_suggestions} usulan nama baru otomatis dari isi dokumen "
             f"({approved_count} disetujui)."
         )
         self.setVisible(True)
@@ -201,7 +202,7 @@ class PreviewTableWidget(QTableWidget):
 
     COLUMNS: tuple[str, ...] = (
         "Pilih",
-        "Nama File / Usulan Rename",
+        "Nama File & Usulan Nama Baru",
         "Folder Tujuan",
         "Status",
     )
@@ -456,3 +457,57 @@ class PreviewTableWidget(QTableWidget):
             1 for row_idx in self._rename_rows if self._items[row_idx].is_rename_approved
         )
         return total, approved
+
+    def get_selection_summary(self) -> dict[str, int]:
+        """Menghitung ringkasan status seluruh baris berdasarkan pilihan centang saat ini."""
+        selected_ready = 0
+        selected_duplicates = 0
+        manual_check_count = 0
+        unchecked_count = 0
+
+        for item, cb in zip(self._items, self._row_checkboxes):
+            if item.is_skipped:
+                manual_check_count += 1
+            elif cb.isChecked():
+                if item.is_duplicate:
+                    selected_duplicates += 1
+                else:
+                    selected_ready += 1
+            else:
+                unchecked_count += 1
+
+        return {
+            "total_files": len(self._items),
+            "selected_ready": selected_ready,
+            "selected_duplicates": selected_duplicates,
+            "manual_check_count": manual_check_count,
+            "unchecked_count": unchecked_count,
+            "selected_total": selected_ready + selected_duplicates,
+        }
+
+
+class EmptyStateWidget(QFrame):
+    """Tampilan ramah saat folder yang dipilih kosong atau tidak memiliki file untuk dirapikan."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Menginisialisasi kartu pesan kondisi kosong (empty state)."""
+        super().__init__(parent)
+        self.setObjectName("EmptyStateCard")
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(32, 48, 32, 48)
+        layout.setSpacing(8)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.title_label = QLabel("Tidak Ada File yang Perlu Dirapikan")
+        self.title_label.setObjectName("EmptyStateTitleLabel")
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.desc_label = QLabel(
+            "Folder ini kosong atau seluruh file sudah tersimpan rapi di dalam subfolder."
+        )
+        self.desc_label.setObjectName("EmptyStateDescLabel")
+        self.desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        layout.addWidget(self.title_label)
+        layout.addWidget(self.desc_label)
