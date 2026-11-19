@@ -48,7 +48,10 @@ class DuplicateFinder:
         )
         text_rules_data = self._load_json(
             self.text_rules_path,
-            fallback={"duplicate_markers": []},
+            fallback={
+                "generic_filename_patterns": [],
+                "duplicate_markers": [],
+            },
         )
 
         self.quarantine_folder: str = str(
@@ -58,9 +61,14 @@ class DuplicateFinder:
             str(ext).lower() for ext in rules_data.get("obsolete_extensions", [])
         }
         self.default_obsolete_age_days: int = int(rules_data.get("obsolete_age_days", 30))
+        self.generic_filename_patterns: list[re.Pattern[str]] = self._compile_patterns(
+            text_rules_data.get("generic_filename_patterns", [])
+        )
         self.duplicate_markers: list[re.Pattern[str]] = self._compile_patterns(
             text_rules_data.get("duplicate_markers", [])
         )
+        self._word_pattern: re.Pattern[str] = re.compile(r"[a-zA-Z]{2,}")
+        self._non_alnum_pattern: re.Pattern[str] = re.compile(r"[^a-zA-Z0-9\s_-]")
 
     @staticmethod
     def _resolve_data_path(file_path: str) -> Path:
@@ -117,6 +125,42 @@ class DuplicateFinder:
         except OSError:
             return ""
 
+    def _score_filename_quality(self, filename: str) -> int:
+        """Menilai kualitas nama file untuk menentukan file utama pada grup duplikat.
+
+        Memberi penalti berat pada nama file generik (dari `generic_filename_patterns`),
+        penalti pada penanda salinan/duplikat (dari `duplicate_markers`), serta nilai
+        tambah untuk kata deskriptif yang bersih dan bermakna.
+
+        Args:
+            filename: Nama file beserta ekstensinya.
+
+        Returns:
+            Skor bilangan bulat; skor lebih tinggi menandakan nama file lebih baik.
+        """
+        stem = Path(filename).stem.strip()
+        score = 0
+
+        is_generic = any(p.search(stem) for p in self.generic_filename_patterns)
+        if is_generic:
+            score -= 50
+
+        if any(p.search(stem) for p in self.duplicate_markers):
+            score -= 30
+
+        cleaned_stem = stem
+        for pattern in self.duplicate_markers:
+            cleaned_stem = pattern.sub("", cleaned_stem)
+
+        if not is_generic:
+            words = self._word_pattern.findall(cleaned_stem)
+            score += 5 * min(len(words), 6)
+            if len(words) >= 2:
+                score += 5
+
+        score -= 2 * len(self._non_alnum_pattern.findall(stem))
+        return score
+
     def mark_duplicates(
         self,
         items: list[FilePlanItem],
@@ -124,7 +168,9 @@ class DuplicateFinder:
     ) -> list[FilePlanItem]:
         """Menandai file duplikat menggunakan penyaringan ukuran file dan hash SHA-256.
 
-        File yang terdeteksi memiliki isi identik dengan file sebelumnya akan ditandai:
+        Pada setiap grup file dengan isi hash SHA-256 yang identik, file dengan skor
+        kualitas nama tertinggi (`_score_filename_quality`) dipertahankan sebagai file
+        utama, sedangkan sisanya ditandai:
         - `is_duplicate = True`
         - `category = "_Karantina_Duplikat"` (sesuai `quarantine_folder` di JSON)
         - `proposed_path` diarahkan ke dalam subfolder karantina
@@ -141,17 +187,17 @@ class DuplicateFinder:
         if not items:
             return items
 
-        # Tahap 1: Kelompokkan item berdasarkan file_size (hanya ukuran > 0 yang berpotensi duplikat)
-        size_groups: dict[int, list[FilePlanItem]] = {}
-        for item in items:
+        # Tahap 1: Kelompokkan item beserta indeks aslinya berdasarkan file_size (> 0)
+        size_groups: dict[int, list[tuple[int, FilePlanItem]]] = {}
+        for idx, item in enumerate(items):
             if item.file_size > 0:
-                size_groups.setdefault(item.file_size, []).append(item)
+                size_groups.setdefault(item.file_size, []).append((idx, item))
 
-        candidates: list[FilePlanItem] = [
-            item
+        candidates: list[tuple[int, FilePlanItem]] = [
+            pair
             for group in size_groups.values()
             if len(group) > 1
-            for item in group
+            for pair in group
         ]
 
         total_candidates = len(candidates)
@@ -161,31 +207,49 @@ class DuplicateFinder:
             return items
 
         # Tahap 2: Hitung hash SHA-256 hanya untuk kandidat yang ukurannya sama
-        seen_hashes: dict[tuple[int, str], str] = {}
+        hash_groups: dict[tuple[int, str], list[tuple[int, FilePlanItem]]] = {}
 
-        for index, item in enumerate(candidates, start=1):
+        for step, (idx, item) in enumerate(candidates, start=1):
             source = Path(item.source_path)
             file_hash = self.calculate_file_hash(source)
 
             if file_hash:
                 key = (item.file_size, file_hash)
-                if key in seen_hashes:
-                    item.is_duplicate = True
-                    item.category = self.quarantine_folder
-                    quarantine_target = (
-                        source.parent / self.quarantine_folder / item.proposed_name
-                    )
-                    item.proposed_path = str(quarantine_target)
-                    item.status_label = "File Duplikat"
-                else:
-                    seen_hashes[key] = item.source_path
+                hash_groups.setdefault(key, []).append((idx, item))
 
             if progress_callback is not None:
-                percent = int((index / total_candidates) * 100)
+                percent = int((step / total_candidates) * 100)
                 progress_callback(
                     percent,
-                    f"Memeriksa kemiripan isi file ({index}/{total_candidates}): {item.file_name}",
+                    f"Memeriksa kemiripan isi file ({step}/{total_candidates}): {item.file_name}",
                 )
+
+        # Tahap 3: Pilih satu file pemenang terbaik per grup hash identik
+        for group in hash_groups.values():
+            if len(group) <= 1:
+                continue
+
+            winner_idx, _ = min(
+                group,
+                key=lambda pair: (
+                    -self._score_filename_quality(pair[1].file_name),
+                    len(pair[1].file_name),
+                    pair[1].file_name.lower(),
+                    pair[0],
+                ),
+            )
+
+            for idx, item in group:
+                if idx == winner_idx:
+                    continue
+                source = Path(item.source_path)
+                item.is_duplicate = True
+                item.category = self.quarantine_folder
+                quarantine_target = (
+                    source.parent / self.quarantine_folder / item.proposed_name
+                )
+                item.proposed_path = str(quarantine_target)
+                item.status_label = "File Duplikat"
 
         return items
 

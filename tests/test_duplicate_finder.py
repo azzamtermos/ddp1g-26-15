@@ -166,3 +166,128 @@ def test_calculate_wasted_space_summary() -> None:
     assert summary["duplicate_count"] == 1
     assert summary["obsolete_count"] == 1
     assert summary["formatted_size"] == "3.0 KB"
+
+
+def test_mark_duplicates_prefers_descriptive_name_over_wa_generic(
+    tmp_path: Path,
+) -> None:
+    """Memastikan file bernama deskriptif menang atas file generik WA meskipun urutan list di belakang."""
+    finder = DuplicateFinder()
+    content = b"Isi RPP Matematika Kelas 10 Identik"
+
+    wa_file = tmp_path / "DOC-20261118-WA0004.pdf"
+    rpp_file = tmp_path / "RPP_Matematika_Kelas_10.pdf"
+    wa_file.write_bytes(content)
+    rpp_file.write_bytes(content)
+
+    items = [
+        FilePlanItem(
+            source_path=str(wa_file),
+            file_name=wa_file.name,
+            proposed_name=wa_file.name,
+            file_size=len(content),
+            category="Lainnya",
+            proposed_path=str(tmp_path / "Lainnya" / wa_file.name),
+        ),
+        FilePlanItem(
+            source_path=str(rpp_file),
+            file_name=rpp_file.name,
+            proposed_name=rpp_file.name,
+            file_size=len(content),
+            category="Materi_dan_Bahan_Ajar",
+            proposed_path=str(tmp_path / "Materi_dan_Bahan_Ajar" / rpp_file.name),
+        ),
+    ]
+
+    result = finder.mark_duplicates(items)
+
+    assert result[0].is_duplicate is True
+    assert result[0].category == "_Karantina_Duplikat"
+    assert result[0].status_label == "File Duplikat"
+    assert result[0].proposed_path == str(
+        tmp_path / "_Karantina_Duplikat" / wa_file.name
+    )
+
+    assert result[1].is_duplicate is False
+    assert result[1].category == "Materi_dan_Bahan_Ajar"
+    assert result[1].status_label == "Siap Dirapikan"
+
+
+def test_mark_duplicates_prefers_clean_name_over_copy_markers(
+    tmp_path: Path,
+) -> None:
+    """Memastikan nama bersih tanpa penanda salinan menang atas pola (1) dan - Copy."""
+    finder = DuplicateFinder()
+    content = b"Soal Ujian Akhir Semester Identik"
+
+    numbered_copy = tmp_path / "Soal_UAS (1).pdf"
+    named_copy = tmp_path / "Soal_UAS - Copy.pdf"
+    clean_file = tmp_path / "Soal_UAS.pdf"
+
+    numbered_copy.write_bytes(content)
+    named_copy.write_bytes(content)
+    clean_file.write_bytes(content)
+
+    items = [
+        FilePlanItem(
+            source_path=str(numbered_copy),
+            file_name=numbered_copy.name,
+            proposed_name=numbered_copy.name,
+            file_size=len(content),
+            category="Soal_dan_Ujian",
+            proposed_path=str(tmp_path / "Soal_dan_Ujian" / numbered_copy.name),
+        ),
+        FilePlanItem(
+            source_path=str(named_copy),
+            file_name=named_copy.name,
+            proposed_name=named_copy.name,
+            file_size=len(content),
+            category="Soal_dan_Ujian",
+            proposed_path=str(tmp_path / "Soal_dan_Ujian" / named_copy.name),
+        ),
+        FilePlanItem(
+            source_path=str(clean_file),
+            file_name=clean_file.name,
+            proposed_name=clean_file.name,
+            file_size=len(content),
+            category="Soal_dan_Ujian",
+            proposed_path=str(tmp_path / "Soal_dan_Ujian" / clean_file.name),
+        ),
+    ]
+
+    result = finder.mark_duplicates(items)
+
+    assert result[0].is_duplicate is True
+    assert result[0].category == "_Karantina_Duplikat"
+    assert result[1].is_duplicate is True
+    assert result[1].category == "_Karantina_Duplikat"
+    assert result[2].is_duplicate is False
+    assert result[2].status_label == "Siap Dirapikan"
+
+
+def test_file_plan_item_final_name_behavior() -> None:
+    """Memverifikasi nilai default serta perilaku properti FilePlanItem.final_name."""
+    base_item = FilePlanItem(
+        source_path="/tmp/DOC-20261118-WA0004.pdf",
+        file_name="DOC-20261118-WA0004.pdf",
+        proposed_name="DOC-20261118-WA0004.pdf",
+        file_size=1024,
+        category="Lainnya",
+        proposed_path="/tmp/Lainnya/DOC-20261118-WA0004.pdf",
+    )
+
+    assert base_item.suggested_name is None
+    assert base_item.is_rename_approved is True
+    assert base_item.is_skipped is False
+    assert base_item.final_name == "DOC-20261118-WA0004.pdf"
+
+    base_item.suggested_name = "RPP_Matematika.pdf"
+    base_item.is_rename_approved = True
+    assert base_item.final_name == "RPP_Matematika.pdf"
+
+    base_item.is_rename_approved = False
+    assert base_item.final_name == "DOC-20261118-WA0004.pdf"
+
+    base_item.suggested_name = "   "
+    base_item.is_rename_approved = True
+    assert base_item.final_name == "DOC-20261118-WA0004.pdf"
