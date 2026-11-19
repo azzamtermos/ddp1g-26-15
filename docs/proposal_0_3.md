@@ -77,7 +77,7 @@ Setiap perubahan kode wajib mematuhi aturan berikut:
   - Implementasi pembacaan teks `.pdf` (`pypdf`) dan `.docx` (`zipfile`/`xml`), filter kop surat Aturan A & B, serta logika *Smart Rename* selektif + status "Dibiarkan" untuk PDF gambar tanpa teks.
   - Pastikan `core/organizer.py` melewati file berstatus "Dibiarkan", mengeksekusi `final_name` saat pemindahan, dan mendukung *graceful skip* saat Undo jika ada file yang sudah berubah di luar aplikasi.
   - *Checkpoint 1C:* Tambahkan unit test komprehensif di `tests/test_scanner.py` dan `tests/test_organizer.py` (kop surat teks, kop surat gambar, PDF scan kosong, `.docx`, dan Undo mengembalikan nama asli). Semua `pytest -v` lulus.
-- [ ] **Partisi 1D — Generator Sandbox Realistis (`scripts/seed_demo.py`)**
+- [x] **Partisi 1D — Generator Sandbox Realistis (`scripts/seed_demo.py`)**
   - Perbarui `scripts/seed_demo.py` agar membuat file `.pdf` biner valid (berisi teks kop surat + judul, serta 1 PDF kosong/tanpa teks untuk simulasi scan KTP) dan `.docx` valid menggunakan modul standar Python tanpa dependensi tambahan.
   - *Checkpoint 1D:* Jalankan `python scripts/seed_demo.py`, lalu uji manual lewat `python main.py` (scan -> rapikan -> undo) dan pastikan tidak ada error.
 
