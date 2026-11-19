@@ -186,3 +186,164 @@ QHeaderView::section {
     border: none;
     border-bottom: 1px solid #E2E8F0;
 }
+
+/* Banner Massal Usulan Rename */
+QFrame#RenameBanner {
+    background-color: #ECFDF5;
+    border: 1px solid #A7F3D0;
+    border-radius: 10px;
+}
+
+QLabel#RenameBannerLabel {
+    color: #065F46;
+    font-size: 13px;
+    font-weight: 600;
+    background-color: transparent;
+}
+
+QPushButton#BannerAcceptAllButton {
+    background-color: #16A34A;
+    color: #FFFFFF;
+    border: 1px solid #15803D;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+QPushButton#BannerAcceptAllButton:hover {
+    background-color: #15803D;
+}
+
+QPushButton#BannerAcceptAllButton:disabled {
+    background-color: #CBD5E1;
+    color: #64748B;
+    border-color: #CBD5E1;
+}
+
+QPushButton#BannerRejectAllButton {
+    background-color: #FFFFFF;
+    color: #475569;
+    border: 1px solid #CBD5E1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+QPushButton#BannerRejectAllButton:hover {
+    background-color: #FEF2F2;
+    color: #DC2626;
+    border-color: #FCA5A5;
+}
+
+QPushButton#BannerRejectAllButton:disabled {
+    background-color: #F8FAFC;
+    color: #94A3B8;
+    border-color: #E2E8F0;
+}
+
+/* Sel Inline Usulan Rename & Checkbox di Tabel */
+QWidget#CheckboxCellContainer,
+QWidget#RenameCellContainer {
+    background-color: transparent;
+}
+
+QWidget#CheckboxCellContainer[renameHighlighted="true"],
+QWidget#RenameCellContainer[renameHighlighted="true"] {
+    background-color: #ECFDF5;
+}
+
+QLabel#RenameTextLabel {
+    background-color: transparent;
+    font-size: 13px;
+}
+
+QPushButton#RenameAcceptButton {
+    background-color: #FFFFFF;
+    color: #16A34A;
+    border: 1px solid #86EFAC;
+    border-radius: 6px;
+    padding: 2px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+QPushButton#RenameAcceptButton:hover {
+    background-color: #DCFCE7;
+}
+
+QPushButton#RenameAcceptButton[active="true"] {
+    background-color: #16A34A;
+    color: #FFFFFF;
+    border: 1px solid #15803D;
+}
+
+QPushButton#RenameAcceptButton[active="true"]:hover {
+    background-color: #15803D;
+}
+
+QPushButton#RenameRejectButton {
+    background-color: #FFFFFF;
+    color: #64748B;
+    border: 1px solid #CBD5E1;
+    border-radius: 6px;
+    padding: 2px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+QPushButton#RenameRejectButton:hover {
+    background-color: #FEE2E2;
+    color: #DC2626;
+    border-color: #FCA5A5;
+}
+
+QPushButton#RenameRejectButton[active="true"] {
+    background-color: #FEE2E2;
+    color: #DC2626;
+    border: 1px solid #F87171;
+}
+
+QPushButton#RenameRejectButton[active="true"]:hover {
+    background-color: #FECACA;
+}
+
+/* Checkbox di Tabel */
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid #94A3B8;
+    background-color: #FFFFFF;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #2563EB;
+    border-color: #2563EB;
+}
+
+QCheckBox::indicator:disabled {
+    background-color: #E2E8F0;
+    border-color: #CBD5E1;
+}
+
+/* Kartu Kondisi Kosong (Empty State) */
+QFrame#EmptyStateCard {
+    background-color: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+}
+
+QLabel#EmptyStateTitleLabel {
+    color: #334155;
+    font-size: 16px;
+    font-weight: bold;
+    background-color: transparent;
+}
+
+QLabel#EmptyStateDescLabel {
+    color: #64748B;
+    font-size: 13px;
+    background-color: transparent;
+}

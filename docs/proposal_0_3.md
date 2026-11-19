@@ -83,12 +83,12 @@ Setiap perubahan kode wajib mematuhi aturan berikut:
 
 ### Tahap 2 — UI/UX Polish & Kontrol Pengguna Awam (Branch: `feat/ui-ux-polish`)
 *(Dimulai setelah Tahap 1 di-merge ke `main`)*
-- [ ] **Partisi 2A — Tampilan Usulan Rename ala Google Docs (`ui/widgets.py`, `ui/main_window.py`)**
+- [x] **Partisi 2A — Tampilan Usulan Rename ala Google Docs (`ui/widgets.py`, `ui/main_window.py`)**
   - Highlight baris yang memiliki usulan rename, tampilkan panah perubahan nama (`nama_lama ➔ nama_baru`) + tombol `[✓]` / `[✕]` per baris, dan banner massal `[✓ Terima Semua]` / `[✕ Tolak Semua]` (muncul hanya jika ada usulan).
   - Tampilkan status netral `"Dibiarkan (Perlu Cek Manual)"` untuk file yang tidak disentuh.
   - Tambahkan kotak centang (*checkbox*) per baris (default tercentang semua) agar pengguna tetap bisa mengecualikan file tertentu sebelum dieksekusi.
   - *Checkpoint 2A:* Uji interaksi klik `[✕]`, `[✓]`, Tolak/Terima Semua, dan uncheck file di `demo_sandbox/`, lalu verifikasi hasil eksekusi & Undo.
-- [ ] **Partisi 2B — Pengaman Folder & Bahasa Manusiawi (`ui/main_window.py`, `ui/styles.qss`)**
+- [x] **Partisi 2B — Pengaman Folder & Bahasa Manusiawi (`ui/main_window.py`, `ui/styles.qss`)**
   - Blokir pemilihan folder kritis sistem operasi (root `/`, `C:\Windows`, `Program Files`, `/System`, dll.) dengan pesan peringatan bahasa sehari-hari.
   - Tambahkan kartu ringkasan singkat di atas tabel sebelum eksekusi (contoh: *"12 file siap dirapikan • 2 duplikat diamankan • 1 file perlu dicek manual"*) dan dialog ringkasan hasil setelah selesai.
   - Audit seluruh teks di antarmuka (tombol, label, pesan error) agar 100% menggunakan bahasa Indonesia yang ramah dan bebas istilah teknis (seperti "SHA-256", "exception", atau "path").

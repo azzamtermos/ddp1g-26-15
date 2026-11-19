@@ -165,10 +165,12 @@ class SafeFileOrganizer:
                 success_count += 1
             except PermissionError:
                 errors.append(
-                    f"Gagal memindahkan '{item.file_name}' karena sedang dibuka di aplikasi lain."
+                    f"File '{item.file_name}' belum dapat dipindahkan karena sedang dibuka di aplikasi lain."
                 )
-            except OSError as exc:
-                errors.append(f"Gagal memindahkan '{item.file_name}': {exc}")
+            except OSError:
+                errors.append(
+                    f"File '{item.file_name}' tidak dapat dipindahkan saat ini. Pastikan file tidak sedang terbuka atau terkunci."
+                )
 
             if progress_callback is not None:
                 percent = int((index / total_items) * 100)
@@ -200,7 +202,7 @@ class SafeFileOrganizer:
             raw_content = self.undo_log_path.read_text(encoding="utf-8")
             parsed_data = json.loads(raw_content)
         except (OSError, json.JSONDecodeError):
-            return 0, ["Gagal membaca file riwayat Undo."]
+            return 0, ["Catatan pembatalan terakhir tidak dapat dibaca."]
 
         if isinstance(parsed_data, dict):
             transactions: list[dict[str, str]] = parsed_data.get("transactions", [])
@@ -239,11 +241,13 @@ class SafeFileOrganizer:
                 restored_count += 1
             except PermissionError:
                 errors.append(
-                    f"Gagal mengembalikan '{new_path.name}' karena sedang dibuka di aplikasi lain."
+                    f"File '{new_path.name}' belum dapat dikembalikan karena sedang dibuka di aplikasi lain."
                 )
                 remaining_transactions.append(entry)
-            except OSError as exc:
-                errors.append(f"Gagal mengembalikan '{new_path.name}': {exc}")
+            except OSError:
+                errors.append(
+                    f"File '{new_path.name}' tidak dapat dikembalikan saat ini. Pastikan file tidak sedang terbuka atau terkunci."
+                )
                 remaining_transactions.append(entry)
 
         # Bersihkan folder yang baru dibuat jika sudah benar-benar kosong (terdalam ke terpendek)
@@ -299,8 +303,8 @@ class SafeFileOrganizer:
 
         try:
             entries = list(quarantine_dir.iterdir())
-        except OSError as exc:
-            return 0, [f"Gagal mengakses folder karantina: {exc}"]
+        except OSError:
+            return 0, ["Folder karantina belum dapat dibuka saat ini."]
 
         if not entries:
             return 0, ["Folder _Karantina_Duplikat sudah kosong."]
@@ -311,10 +315,12 @@ class SafeFileOrganizer:
                 trashed_count += 1
             except PermissionError:
                 errors.append(
-                    f"Gagal membuang '{entry.name}' ke Sampah karena sedang dibuka di aplikasi lain."
+                    f"File '{entry.name}' belum dapat dipindahkan ke Tempat Sampah karena sedang dibuka di aplikasi lain."
                 )
-            except Exception as exc:  # noqa: BLE001
-                errors.append(f"Gagal membuang '{entry.name}' ke Sampah: {exc}")
+            except Exception:  # noqa: BLE001
+                errors.append(
+                    f"File '{entry.name}' tidak dapat dipindahkan ke Tempat Sampah saat ini."
+                )
 
         return trashed_count, errors
 
