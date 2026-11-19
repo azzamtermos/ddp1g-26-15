@@ -64,13 +64,24 @@ class FolderScanner:
         self.quarantine_folder: str = str(
             self.rules_data.get("quarantine_folder", "_Karantina_Duplikat")
         )
-        self._compiled_categories: list[tuple[str, set[str], set[str]]] = []
+        self._token_pattern: re.Pattern[str] = re.compile(r"[a-z0-9]+")
+        self._sep_pattern: re.Pattern[str] = re.compile(r"[\s_-]+")
+
+        self._compiled_categories: list[tuple[str, set[str], set[str], set[str]]] = []
         for category_name, rule in self.rules_data.get("categories", {}).items():
             if not isinstance(rule, dict):
                 continue
             extensions = {str(e).lower() for e in rule.get("extensions", [])}
-            keywords = {str(kw).lower() for kw in rule.get("keywords", [])}
-            self._compiled_categories.append((str(category_name), extensions, keywords))
+            exact_keywords = {str(kw).lower() for kw in rule.get("exact_keywords", [])}
+            raw_partial = list(rule.get("partial_keywords", [])) + list(rule.get("keywords", []))
+            partial_keywords = {
+                self._sep_pattern.sub(" ", str(kw).lower()).strip()
+                for kw in raw_partial
+                if str(kw).strip()
+            }
+            self._compiled_categories.append(
+                (str(category_name), extensions, exact_keywords, partial_keywords)
+            )
 
         # Pre-kompilasi pola teks & regex satu kali di __init__
         self.generic_filename_patterns: list[re.Pattern[str]] = self._compile_patterns(
@@ -188,25 +199,28 @@ class FolderScanner:
         return plan_items
 
     def determine_category(self, file_path: Path) -> str:
-        """Menentukan nama folder kategori tujuan berdasarkan kata kunci nama dan ekstensi file.
+        """Menentukan nama folder kategori tujuan berdasarkan ekstensi pasti dan kata kunci.
 
         Args:
             file_path: Objek `pathlib.Path` dari file yang diperiksa.
 
         Returns:
-            Nama kategori tujuan (misal: 'Dokumen_Ajar', 'Administrasi_Nilai', atau 'Lainnya').
+            Nama kategori tujuan (misal: 'Administrasi_dan_Nilai', 'Soal_dan_Ujian',
+            'Materi_dan_Bahan_Ajar', atau 'Lainnya').
         """
         ext = file_path.suffix.lower()
         stem_lower = file_path.stem.lower()
 
-        # Prioritas 1: Kecocokan kata kunci pada nama file sekaligus ekstensi yang relevan
-        for category_name, extensions, keywords in self._compiled_categories:
-            if ext in extensions and any(kw in stem_lower for kw in keywords):
+        # Langkah 1: Kecocokan ekstensi pasti
+        for category_name, extensions, _, _ in self._compiled_categories:
+            if ext in extensions:
                 return category_name
 
-        # Prioritas 2: Kecocokan berdasarkan ekstensi file
-        for category_name, extensions, _ in self._compiled_categories:
-            if ext in extensions:
+        # Langkah 2: Kecocokan kata kunci (exact word boundary & partial) sesuai urutan prioritas
+        tokens = set(self._token_pattern.findall(stem_lower))
+        normalized_stem = self._sep_pattern.sub(" ", stem_lower).strip()
+        for category_name, _, exact_keywords, partial_keywords in self._compiled_categories:
+            if exact_keywords & tokens or any(kw in normalized_stem for kw in partial_keywords):
                 return category_name
 
         return self.default_category

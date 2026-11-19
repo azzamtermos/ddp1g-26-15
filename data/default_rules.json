@@ -5,41 +5,265 @@
     ".exe",
     ".msi",
     ".dmg",
+    ".pkg",
     ".deb",
+    ".rpm",
     ".apk",
+    ".appimage",
     ".tmp",
     ".crdownload",
     ".part"
   ],
   "obsolete_age_days": 30,
   "categories": {
-    "Dokumen_Ajar": {
-      "extensions": [".pdf", ".doc", ".docx", ".odt", ".rtf", ".txt"],
-      "keywords": ["rpp", "silabus", "modul", "materi", "soal", "ujian", "kuis", "bahan_ajar", "kurikulum", "lkpd"]
+    "Administrasi_dan_Nilai": {
+      "exact_keywords": [
+        "sk",
+        "spj",
+        "spt",
+        "rab",
+        "rkas",
+        "bos",
+        "bop",
+        "nik",
+        "nip",
+        "nuptk",
+        "ktp",
+        "kk",
+        "ktm",
+        "sim",
+        "npwp",
+        "bpjs",
+        "cv",
+        "khs",
+        "krs",
+        "ipk",
+        "skp",
+        "pkg",
+        "pkb",
+        "ppdb",
+        "sppd",
+        "mou",
+        "kosp",
+        "nilai",
+        "struk",
+        "akta"
+      ],
+      "partial_keywords": [
+        "rapor",
+        "raport",
+        "rekap",
+        "absen",
+        "presensi",
+        "kehadiran",
+        "daftar hadir",
+        "jadwal",
+        "surat",
+        "undangan",
+        "edaran",
+        "pemberitahuan",
+        "sertifikat",
+        "piagam",
+        "ijazah",
+        "transkrip",
+        "skck",
+        "biodata",
+        "dapodik",
+        "akreditasi",
+        "keuangan",
+        "kwitansi",
+        "invoice",
+        "tagihan",
+        "slip",
+        "gaji",
+        "pajak",
+        "notulen",
+        "berita acara",
+        "kurikulum operasional",
+        "kalender pendidikan",
+        "kaldik",
+        "tata tertib",
+        "mutasi siswa",
+        "mutasi guru",
+        "skhu"
+      ],
+      "extensions": [
+        ".xlsx",
+        ".xls",
+        ".csv",
+        ".ods"
+      ]
     },
-    "Administrasi_Nilai": {
-      "extensions": [".xls", ".xlsx", ".csv", ".ods"],
-      "keywords": ["nilai", "rekap", "absen", "presensi", "rapor", "jadwal", "daftar_hadir", "anggaran"]
+    "Soal_dan_Ujian": {
+      "exact_keywords": [
+        "uh",
+        "ph",
+        "pts",
+        "pas",
+        "pat",
+        "uts",
+        "uas",
+        "ukk",
+        "us",
+        "un",
+        "akm",
+        "anbk",
+        "osn",
+        "osk",
+        "osp",
+        "ksn",
+        "ljk",
+        "tka",
+        "tkd",
+        "utbk",
+        "snbt"
+      ],
+      "partial_keywords": [
+        "soal",
+        "ujian",
+        "ulangan",
+        "kuis",
+        "quiz",
+        "tryout",
+        "try out",
+        "simulasi",
+        "kisi-kisi",
+        "kisi kisi",
+        "kunci jawaban",
+        "pembahasan",
+        "asesmen",
+        "penilaian harian",
+        "penilaian tengah semester",
+        "penilaian akhir",
+        "sumatif",
+        "formatif",
+        "diagnostik",
+        "remidi",
+        "remedial",
+        "pengayaan",
+        "olimpiade",
+        "lomba",
+        "bank soal",
+        "paket soal",
+        "lembar jawab"
+      ],
+      "extensions": []
     },
-    "Presentasi_Materi": {
-      "extensions": [".ppt", ".pptx", ".odp", ".key"],
-      "keywords": ["presentasi", "slide", "paparan", "pertemuan"]
+    "Materi_dan_Bahan_Ajar": {
+      "exact_keywords": [
+        "rpp",
+        "atp",
+        "cp",
+        "tp",
+        "kkp",
+        "kkm",
+        "kktp",
+        "lkpd",
+        "lks",
+        "p5",
+        "ppra",
+        "bab"
+      ],
+      "partial_keywords": [
+        "materi",
+        "modul",
+        "bahan ajar",
+        "silabus",
+        "prota",
+        "promes",
+        "program tahunan",
+        "program semester",
+        "jurnal",
+        "buku",
+        "diktat",
+        "handout",
+        "ringkasan",
+        "rangkuman",
+        "catatan",
+        "presentasi",
+        "slide",
+        "paparan",
+        "tayangan",
+        "pertemuan",
+        "pembelajaran",
+        "kurikulum",
+        "kurikulum merdeka",
+        "k13",
+        "praktikum",
+        "referensi",
+        "artikel",
+        "makalah",
+        "karya ilmiah",
+        "skripsi",
+        "jurnal ilmiah"
+      ],
+      "extensions": [
+        ".pptx",
+        ".ppt",
+        ".odp",
+        ".key",
+        ".epub"
+      ]
     },
-    "Gambar_Media": {
-      "extensions": [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp"],
-      "keywords": ["foto", "dokumentasi", "poster", "infografis", "sertifikat"]
+    "Foto_dan_Gambar": {
+      "exact_keywords": [],
+      "partial_keywords": [],
+      "extensions": [
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".webp",
+        ".heic",
+        ".gif",
+        ".bmp",
+        ".svg",
+        ".ico",
+        ".tiff"
+      ]
     },
-    "Video_Audio": {
-      "extensions": [".mp4", ".mkv", ".avi", ".mov", ".mp3", ".wav", ".m4a"],
-      "keywords": ["rekaman", "video", "pembelajaran", "audio"]
+    "Video_dan_Audio": {
+      "exact_keywords": [],
+      "partial_keywords": [],
+      "extensions": [
+        ".mp4",
+        ".mkv",
+        ".avi",
+        ".mov",
+        ".webm",
+        ".mp3",
+        ".wav",
+        ".m4a",
+        ".flac",
+        ".ogg"
+      ]
     },
-    "Arsip_Kompresi": {
-      "extensions": [".zip", ".rar", ".7z", ".tar", ".gz"],
-      "keywords": ["arsip", "backup", "kumpulan"]
+    "Paket_File_ZIP": {
+      "exact_keywords": [],
+      "partial_keywords": [],
+      "extensions": [
+        ".zip",
+        ".rar",
+        ".7z",
+        ".tar",
+        ".gz",
+        ".bz2",
+        ".xz",
+        ".iso"
+      ]
     },
     "Installer_Aplikasi": {
-      "extensions": [".exe", ".msi", ".dmg", ".deb", ".apk", ".appimage"],
-      "keywords": ["setup", "installer", "install"]
+      "exact_keywords": [],
+      "partial_keywords": [],
+      "extensions": [
+        ".exe",
+        ".msi",
+        ".dmg",
+        ".pkg",
+        ".deb",
+        ".rpm",
+        ".apk",
+        ".appimage"
+      ]
     }
   }
 }

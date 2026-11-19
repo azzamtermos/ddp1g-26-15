@@ -64,7 +64,7 @@ Setiap perubahan kode wajib mematuhi aturan berikut:
 > **Aturan Eksekusi untuk Agen:** Kerjakan **maksimal 1 sub-partisi per sesi**. Setelah menyelesaikan 1 sub-partisi, WAJIB jalankan `pytest -v`, laporkan ringkasan perubahan, dan berhenti menunggu konfirmasi sebelum lanjut ke sub-partisi berikutnya.
 
 ### Tahap 1 — Core Logic & Offline Smart Rename (Branch: `feat/offline-smart-rename`)
-- [ ] **Partisi 1A — Pembaruan Data Aturan Modular (`data/`)**
+- [x] **Partisi 1A — Pembaruan Data Aturan Modular (`data/`)**
   - Perbarui `data/default_rules.json` ke 7 kategori baru + urutan prioritas + pemisahan `exact_keywords` & `partial_keywords` + ekstensi pasti.
   - Lengkapi `data/text_rules.json` (pola nama generik, whitelist judul Aturan A, filter kop surat Aturan B, penanda duplikat).
   - *Checkpoint 1A:* JSON valid, tidak ada duplikasi/konflik kata kunci kritis, tes eksisting tetap jalan atau disesuaikan.
