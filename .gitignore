@@ -28,3 +28,10 @@ Thumbs.db
 
 # Demo sandbox folder
 demo_sandbox/
+
+# PyInstaller & packaging outputs
+build/
+dist/
+*.deb
+*.spec
+deb_staging/

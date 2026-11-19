@@ -8,6 +8,7 @@ dengan worker thread (QThread) dan bahasa antarmuka yang ramah pengguna awam.
 from typing import Any
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -22,6 +23,7 @@ from PyQt6.QtWidgets import (
 )
 
 from core.models import FilePlanItem
+from core.paths import get_icon_path
 from core.safety import validate_target_directory
 from ui.widgets import (
     DropZoneWidget,
@@ -38,8 +40,12 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         """Menginisialisasi tata letak antarmuka, sinyal, dan status awal komponen."""
         super().__init__()
-        self.setWindowTitle("Smart File Organizer")
+        self.setWindowTitle("Rapihin Aja")
         self.setMinimumSize(920, 660)
+
+        icon_path = get_icon_path()
+        if icon_path:
+            self.setWindowIcon(QIcon(icon_path))
 
         self.current_folder: str = ""
         self.current_items: list[FilePlanItem] = []
@@ -65,7 +71,7 @@ class MainWindow(QMainWindow):
         header_layout = QVBoxLayout()
         header_layout.setSpacing(4)
 
-        self.title_label = QLabel("Smart File Organizer")
+        self.title_label = QLabel("Rapihin Aja")
         self.title_label.setObjectName("AppTitleLabel")
 
         self.subtitle_label = QLabel(

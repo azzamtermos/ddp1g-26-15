@@ -96,7 +96,7 @@ class OrganizeWorker(QThread):
         mode: str = "organize",
         items: list[FilePlanItem] | None = None,
         base_folder_path: str = "",
-        undo_log_path: str = "data/undo_history.json",
+        undo_log_path: str | None = None,
         parent: QObject | None = None,
     ) -> None:
         """Menyiapkan worker untuk mode aksi 'organize', 'undo', atau 'empty_quarantine'.
@@ -105,14 +105,14 @@ class OrganizeWorker(QThread):
             mode: Jenis operasi ('organize', 'undo', atau 'empty_quarantine').
             items: Daftar `FilePlanItem` yang akan dieksekusi (untuk mode 'organize').
             base_folder_path: Alamat folder utama (untuk mode 'empty_quarantine').
-            undo_log_path: Alamat file JSON riwayat transaksi Undo.
+            undo_log_path: Alamat file JSON riwayat transaksi Undo (opsional).
             parent: Objek induk QObject (opsional).
         """
         super().__init__(parent)
         self.mode: str = mode
         self.items: list[FilePlanItem] = items or []
         self.base_folder_path: str = base_folder_path
-        self.undo_log_path: str = undo_log_path
+        self.undo_log_path: str | None = undo_log_path
 
     def run(self) -> None:
         """Menjalankan metode pada `SafeFileOrganizer` sesuai mode aksi yang dipilih."""

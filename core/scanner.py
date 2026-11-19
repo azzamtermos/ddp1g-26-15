@@ -16,6 +16,7 @@ import zipfile
 from pypdf import PdfReader
 
 from core.models import FilePlanItem
+from core.paths import get_resource_path
 
 
 class FolderScanner:
@@ -117,12 +118,8 @@ class FolderScanner:
 
     @staticmethod
     def _resolve_data_path(file_path: str) -> Path:
-        """Meresolusi path relatif terhadap root proyek agar aman dijalankan dari mana pun."""
-        raw_path = Path(file_path)
-        if not raw_path.is_absolute() and not raw_path.exists():
-            project_root = Path(__file__).resolve().parent.parent
-            return project_root / raw_path
-        return raw_path
+        """Meresolusi path relatif terhadap root proyek atau bundle PyInstaller."""
+        return get_resource_path(file_path)
 
     @staticmethod
     def _load_json(path: Path, fallback: dict[str, Any]) -> dict[str, Any]:

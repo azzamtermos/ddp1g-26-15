@@ -11,10 +11,12 @@ from collections.abc import Callable
 from datetime import datetime
 import json
 from pathlib import Path
+import sys
 
 from send2trash import send2trash
 
 from core.models import FilePlanItem, TransactionRecord
+from core.paths import get_default_undo_log_path, get_user_data_dir
 
 
 class SafeFileOrganizer:
@@ -26,18 +28,27 @@ class SafeFileOrganizer:
 
     QUARANTINE_FOLDER: str = "_Karantina_Duplikat"
 
-    def __init__(self, undo_log_path: str = "data/undo_history.json") -> None:
+    def __init__(self, undo_log_path: str | None = None) -> None:
         """Menyiapkan alamat penyimpanan log Undo dan memastikan file JSON tersedia.
 
+        Jika `undo_log_path` tidak ditentukan (`None`), riwayat otomatis disimpan di
+        direktori data pengguna (`get_user_data_dir("rapihin-aja")`) agar selalu
+        memiliki izin tulis saat aplikasi berjalan dari direktori sistem yang read-only.
+
         Args:
-            undo_log_path: Alamat relatif atau absolut menuju file log transaksi JSON.
+            undo_log_path: Alamat relatif atau absolut menuju file log transaksi JSON (opsional).
         """
-        raw_path = Path(undo_log_path)
-        if not raw_path.is_absolute():
-            project_root = Path(__file__).resolve().parent.parent
-            self.undo_log_path: Path = project_root / raw_path
+        if undo_log_path is None or not str(undo_log_path).strip():
+            self.undo_log_path: Path = get_default_undo_log_path()
         else:
-            self.undo_log_path = raw_path
+            raw_path = Path(undo_log_path)
+            if raw_path.is_absolute():
+                self.undo_log_path = raw_path
+            elif getattr(sys, "frozen", False):
+                self.undo_log_path = get_user_data_dir() / raw_path.name
+            else:
+                project_root = Path(__file__).resolve().parent.parent
+                self.undo_log_path = project_root / raw_path
         self.last_undo_skipped_count: int = 0
         self._ensure_undo_log_exists()
 
