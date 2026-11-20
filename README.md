@@ -1,126 +1,113 @@
-# Smart File Organizer
+# Rapihin Aja
 
-Aplikasi desktop berbasis **Python** dan **PyQt6** untuk merapikan folder yang berantakan secara otomatis, mendeteksi file kembar (duplikat) dengan aman, menandai installer usang, serta menyediakan fitur **1-Click Undo** untuk mengembalikan perubahan kapan saja.
-
----
-
-## 1. Latar Belakang Masalah
-
-Banyak pengguna komputer—khususnya pengajar, pelajar, dan staf administrasi—sering menumpuk ratusan dokumen (`RPP`, `Silabus`, `Rekap Nilai`, `Materi`, `Soal`, foto dokumentasi, hingga file installer) di dalam satu folder seperti *Downloads* atau *Documents*. Masalah yang sering muncul meliputi:
-- **Sulit mencari dokumen penting** karena nama file tidak seragam dan bercampur di satu tempat.
-- **Penyimpanan penuh tanpa disadari** akibat banyaknya file duplikat yang terunduh berulang kali serta file installer lama yang tidak lagi terpakai.
-- **Kekhawatiran kehilangan file** saat menggunakan aplikasi pembersih otomatis yang menghapus file secara permanen tanpa fitur pembatalan (*Undo*).
-
-**Smart File Organizer** hadir dengan pendekatan **Aman & Ramah Pengguna**:
-1. **Pratinjau Otomatis (*Auto-Scan Preview*):** Begitu folder dipilih atau ditarik (*drag-and-drop*), aplikasi langsung menampilkan rencana pengelompokan file beserta estimasi ruang penyimpanan yang bisa dihemat sebelum memindahkan apa pun.
-2. **Karantina Duplikat & 100% Undo-able:** File kembar tidak langsung dihapus, melainkan dipindahkan ke subfolder `_Karantina_Duplikat/` dan dicatat ke log transaksi lokal sehingga 100% file dapat dikembalikan ke posisi semula lewat tombol **"Batalkan (Undo)"**.
-3. **Pembersihan Aman ke Sampah (*Recycle Bin*):** Dilarang keras menghapus file secara permanen (`os.remove` / `shutil.rmtree`). Pembersihan isi karantina menggunakan `send2trash` agar tetap masuk ke *Recycle Bin* / *Trash* sistem operasi.
+**Rapihin Aja** adalah aplikasi desktop berbasis **Python** dan **PyQt6** yang **100% offline** untuk merapikan folder berantakan dalam satu klik, memberi nama baru otomatis pada dokumen generik dari isi berkas, mengamankan file duplikat ke folder karantina, serta memulihkan seluruh perubahan kapan saja melalui **Batalkan (Undo)**.
 
 ---
 
-## 2. Struktur Folder Proyek
+## Fitur Utama
+
+- **Kategorisasi Cerdas Berbasis Data:** Memilah file di tingkat utama folder ke 7 folder kategori berprioritas (`Administrasi_dan_Nilai`, `Soal_dan_Ujian`, `Materi_dan_Bahan_Ajar`, `Media_dan_Presentasi`, `Aplikasi_dan_Arsip`, `Dokumen_Lainnya`, dan `_Karantina_Duplikat`) **tanpa menyentuh subfolder** yang sudah ada.
+- **Offline *Smart Rename* (`.pdf` & `.docx`):** Membaca judul/kop dokumen pada berkas bernama generik (seperti `DOC-...-WA....pdf` atau `CamScanner_....pdf`) secara lokal tanpa internet, lalu menampilkan usulan nama baru ala pratinjau dokumen dengan tombol setujui (`✓`) atau tolak (`✕`) per baris maupun massal.
+- **Deteksi Duplikat (SHA-256) & Installer Usang:** Mempertahankan file bernama paling deskriptif, mengamankan file kembar ke `_Karantina_Duplikat/`, menandai installer lama, serta menghitung estimasi ruang penyimpanan yang bisa dihemat.
+- **Pembersihan Aman ke Tempat Sampah:** Tombol **Bersihkan Karantina ke Sampah** memindahkan file karantina melalui `send2trash` ke *Recycle Bin* / *Trash*—tidak pernah menghapus permanen.
+- **Kontrol Penuh & Pengaman Sistem:** Memblokir folder sistem kritis OS dan akar folder pengguna, mendukung pengecualian file via kotak centang, menyediakan filter tab (`Semua`, `Usulan Nama`, `Duplikat`/`Duplikat & Usang`, `Cek Manual`), dan membiarkan file yang tidak terbaca di tempat asal (*safe-skip*).
+- **1-Click Undo:** Mencatat setiap perpindahan dan perubahan nama ke riwayat lokal agar seluruh file beserta nama aslinya dapat dikembalikan kapan saja dengan menekan **Batalkan (Undo)**.
+
+---
+
+## Tampilan Aplikasi
+
+| 1. Halaman Awal (*Welcome State*) | 2. Pratinjau & Filter Folder Terpilih |
+| :---: | :---: |
+| ![Tampilan awal Rapihin Aja](pics/home.jpeg) | ![Pratinjau folder terpilih Rapihin Aja](pics/selected_folder.jpeg) |
+| Tampilan awal (*Welcome State*) yang bersih dan 100% offline. | Pratinjau file, usulan nama baru otomatis, filter tab, dan estimasi hemat ruang. |
+
+| 3. Hasil Perapian (*Clean Up*) | 4. Pemulihan 1 Klik (*Undo*) |
+| :---: | :---: |
+| ![Ringkasan hasil perapian Rapihin Aja](pics/clean_up.jpeg) | ![Pemulihan file lewat Undo di Rapihin Aja](pics/undo.jpeg) |
+| Ringkasan hasil setelah menekan **Rapikan Sekarang**. | Pemulihan file dan nama asli lewat **Batalkan (Undo)**. |
+
+---
+
+## Cara Unduh & Instalasi
+
+### A. Pengguna Umum — Unduh Rilis Siap Pakai (Direkomendasikan)
+
+Unduh paket instalasi sesuai sistem operasi Anda langsung dari halaman [**GitHub Releases**](https://github.com/azzamtermos/ddp1g-26-15/releases):
+
+#### 1. Windows 64-bit (`rapihin-aja-windows-x64.zip`)
+1. Unduh **`rapihin-aja-windows-x64.zip`** dari halaman Releases.
+2. Ekstrak file ZIP ke folder pilihan Anda, buka folder `rapihin-aja`, lalu klik dua kali **`rapihin-aja.exe`**.
+3. **Catatan Windows SmartScreen:** Karena rilis Beta belum memiliki sertifikat tanda tangan digital berbayar (*code-signing*), Windows Defender SmartScreen dapat memunculkan peringatan *"Windows protected your PC"*. Klik **More info** lalu pilih **Run anyway** untuk menjalankan **Rapihin Aja**.
+
+#### 2. Linux — Debian / Ubuntu `amd64` (`rapihin-aja_0.3.0_amd64.deb`)
+1. Unduh **`rapihin-aja_0.3.0_amd64.deb`** dari halaman Releases.
+2. Pasang paket melalui terminal:
+   ```bash
+   sudo apt install ./rapihin-aja_0.3.0_amd64.deb
+   ```
+3. Jalankan **Rapihin Aja** dari menu aplikasi desktop atau melalui terminal dengan perintah `rapihin-aja`.
+
+#### 3. macOS — Apple Silicon (`rapihin-aja-macos-arm64.zip`)
+1. Unduh **`rapihin-aja-macos-arm64.zip`** dari halaman Releases.
+2. Ekstrak arsip ZIP, lalu pindahkan **`Rapihin Aja.app`** ke folder **Applications**.
+3. **Catatan macOS Gatekeeper:** Jika macOS menolak membuka aplikasi karena pengembang belum terdaftar (*unidentified developer*), klik kanan pada **`Rapihin Aja.app`** → pilih **Open** → klik **Open** pada jendela konfirmasi. Alternatifnya, jalankan perintah berikut di Terminal:
+   ```bash
+   xattr -cr "/Applications/Rapihin Aja.app"
+   ```
+
+---
+
+### B. Mode *Development* (Menjalankan dari Kode Sumber)
+
+Pastikan **Python 3.11+** sudah terpasang, lalu jalankan langkah berikut dari direktori proyek:
+
+1. **Buat dan aktifkan *virtual environment*:**
+   - **Linux / macOS:**
+     ```bash
+     python3 -m venv .venv
+     source .venv/bin/activate
+     ```
+   - **Windows (PowerShell):**
+     ```powershell
+     python -m venv .venv
+     .venv\Scripts\Activate.ps1
+     ```
+
+2. **Pasang seluruh dependensi:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Jalankan aplikasi:**
+   ```bash
+   python main.py
+   ```
+
+4. **Opsional — Buat folder simulasi & jalankan pengujian unit:**
+   ```bash
+   # Membuat folder demo_sandbox/ berisi contoh file realistis
+   python scripts/seed_demo.py
+
+   # Menjalankan seluruh unit test
+   pytest -v
+   ```
+
+---
+
+## Struktur Proyek Ringkas
 
 ```text
 ddp1g-26-15/
-├── .gitignore                   # Mengabaikan data/undo_history.json, .env, __pycache__/, .venv/
-├── main.py                      # Entry point aplikasi: inisialisasi QApplication, muat styles.qss, buka MainWindow
-├── requirements.txt             # Daftar dependensi proyek
-├── README.md                    # Dokumentasi utama proyek
-├── docs/                        # Dokumen proposal arsitektur & rencana kerja
-│   ├── proposal_0_1.md
-│   └── proposal_0_2.md
-├── ui/                          # Paket Antarmuka Pengguna (PyQt6, QThread, & QSS)
-│   ├── __init__.py
-│   ├── main_window.py           # Jendela utama (MainWindow) & integrasi alur auto-scan
-│   ├── widgets.py               # Komponen kustom: DropZoneWidget & PreviewTableWidget
-│   ├── worker.py                # Background worker (ScanWorker & OrganizeWorker berbasis QThread)
-│   └── styles.qss               # Lembar gaya terpusat (palet warna modern & tipografi)
-├── core/                        # Paket Logika Bisnis & Manipulasi File (pathlib.Path & send2trash)
-│   ├── __init__.py
-│   ├── models.py                # Kontrak dataclass (FilePlanItem & TransactionRecord)
-│   ├── scanner.py               # Pemindai folder, kategorisasi pintar, & AI Hybrid Smart Renaming
-│   ├── duplicate_finder.py      # Pendeteksi duplikat (SHA-256), installer usang, & kalkulator ruang hemat
-│   └── organizer.py             # Eksekutor pemindahan, karantina duplikat, send2trash, & 1-Click Undo
-├── data/                        # Penyimpanan aturan kategori & riwayat transaksi
-│   ├── .gitkeep
-│   ├── default_rules.json       # Aturan pengelompokan kategori default
-│   └── (undo_history.json)      # Dibuat otomatis saat runtime (diabaikan oleh Git)
-└── tests/                       # Paket pengujian unit (pytest)
-    ├── __init__.py
-    ├── test_scanner.py
-    ├── test_duplicate_finder.py
-    └── test_organizer.py
+├── main.py                         # Entry point aplikasi Rapihin Aja
+├── requirements.txt                # Daftar dependensi Python
+├── core/                           # Mesin inti: scanner, Smart Rename, SHA-256 duplikat, organizer, safety & paths
+├── ui/                             # Antarmuka PyQt6 (Windows 11 Fluent + Notion), QThread workers & styles.qss
+├── data/                           # Aturan kategori dan ekstraksi dokumen berbasis JSON
+├── assets/                         # Ikon aplikasi (.png & .ico)
+├── scripts/                        # Generator demo_sandbox dan skrip packaging (.deb / Windows .exe)
+├── docs/                           # Dokumen proposal dan acuan desain UI
+├── pics/                           # Tangkapan layar aplikasi untuk dokumentasi README
+├── tests/                          # Pengujian unit otomatis (pytest)
+└── .github/workflows/release.yml   # Workflow build & rilis GitHub lintas OS
 ```
-
----
-
-## 3. Daftar Modul & Cakupan File Eksklusif
-
-Setiap modul dirancang terpisah agar pengembangan paralel bebas dari *merge conflict*:
-
-| Modul | File Cakupan | Lingkup Fungsional |
-| :--- | :--- | :--- |
-| **UI/UX, QSS & Threading** | `main.py`, `ui/main_window.py`, `ui/widgets.py`, `ui/worker.py`, `ui/styles.qss` | Antarmuka PyQt6 modern, area *drag-and-drop* dengan *auto-scan*, `QProgressBar` *real-time*, tabel pratinjau ber-badge warna, dan integrasi `QThread`. |
-| **Folder Scanner & Smart Categorizer** | `core/scanner.py`, `data/default_rules.json`, `tests/test_scanner.py` | Pemindaian direktori berbasis `pathlib.Path`, aturan pengelompokan kategori dokumen, ekstraksi teks PDF (`extract_document_hint`), dan penamaan pintar (`propose_smart_name`). |
-| **Duplicate & Storage Analyzer** | `core/duplicate_finder.py`, `tests/test_duplicate_finder.py` | Deteksi file duplikat dua tahap (ukuran file + hash `SHA-256` per *chunk*), penandaan installer/file sementara usang (`detect_obsolete_installers`), dan kalkulasi ruang hemat (`calculate_wasted_space`). |
-| **Safe File Organizer & 1-Click Undo** | `core/organizer.py`, `tests/test_organizer.py` | Inisialisasi otomatis `data/undo_history.json`, resolusi konflik nama (`_1`, `_2`), karantina duplikat ke `_Karantina_Duplikat/`, pemulihan 100% file via Undo, dan pembersihan karantina ke *Recycle Bin* via `send2trash`. |
-
----
-
-## 4. Cara Instalasi & Menjalankan Aplikasi
-
-### A. Persiapan Virtual Environment
-```bash
-# 1. Buat virtual environment Python
-python3 -m venv .venv
-
-# 2. Aktifkan virtual environment
-# Untuk Linux / macOS:
-source .venv/bin/activate
-# Untuk Windows (PowerShell):
-.venv\Scripts\Activate.ps1
-
-# 3. Instal seluruh dependensi
-pip install -r requirements.txt
-```
-
-### B. Menjalankan Aplikasi
-```bash
-python3 main.py
-```
-
-### C. Menjalankan Pengujian Unit (*Unit Tests*)
-```bash
-pytest -v
-```
-
----
-
-## 5. Panduan Alur Kerja Git (*Git Branch Workflow*)
-
-Agar riwayat repositori tetap rapi dan bebas konflik saat bekerja bersama:
-
-1. **Selalu tarik perubahan terbaru dari `main` sebelum mulai bekerja:**
-   ```bash
-   git checkout main
-   git pull origin main
-   ```
-2. **Buat *branch* fitur sesuai modul yang dikerjakan:**
-   ```bash
-   git checkout -b feat/nama-fitur
-   # Contoh:
-   # git checkout -b feat/scanner-smart-rename
-   # git checkout -b feat/duplicate-analyzer
-   # git checkout -b feat/safe-organizer-undo
-   # git checkout -b feat/ui-filter-enhancements
-   ```
-3. **Pastikan seluruh pengujian `pytest` lulus sebelum melakukan *commit*:**
-   ```bash
-   pytest -v
-   git add <file-yang-diubah>
-   git commit -m "feat(modul): deskripsi singkat perubahan"
-   ```
-4. **Unggah *branch* ke GitHub dan buat *Pull Request* (PR) ke `main`:**
-   ```bash
-   git push -u origin feat/nama-fitur
-   ```
