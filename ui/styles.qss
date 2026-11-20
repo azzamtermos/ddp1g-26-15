@@ -1,35 +1,58 @@
 /* ==========================================================================
-   Lembar Gaya Terpusat (QSS) - Smart File Organizer
-   Mengikuti standar modern-pyqt-ux:
-   - Latar utama: #F8FAFC
-   - Permukaan kartu: #FFFFFF dengan border #E2E8F0
-   - Tombol utama: #2563EB (hover #1D4ED8)
-   - Sudut membulat: 8px (tombol/input), 12px (kartu/area utama)
+   Lembar Gaya Terpusat (QSS) - Rapihin Aja (Windows 11 Fluent + Notion)
+   - Kanvas jendela & dialog: #F3F4F6 (dikunci aman terhadap OS Dark Mode)
+   - Permukaan kartu & tabel: #FFFFFF dengan tepi #E2E8F0
+   - Teks utama & sekunder: #18181B & #64748B
+   - Aksen utama tunggal: #0067C0 (hover #005A9E, pressed #004578)
+   - Tanpa properti CSS web non-standar agar valid penuh di Qt Style Sheets
    ========================================================================== */
 
-QMainWindow, QWidget#CentralWidget {
-    background-color: #F8FAFC;
-    color: #0F172A;
+QMainWindow,
+QWidget#CentralWidget,
+QDialog,
+QMessageBox {
+    background-color: #F3F4F6;
+    color: #18181B;
     font-family: "Segoe UI", "Inter", "Ubuntu", sans-serif;
     font-size: 13px;
 }
 
-/* Tipografi Judul & Label */
+QLabel {
+    background-color: transparent;
+    color: #18181B;
+}
+
+QDialog QLabel,
+QMessageBox QLabel {
+    color: #18181B;
+    background-color: transparent;
+}
+
+QToolTip {
+    background-color: #18181B;
+    color: #FFFFFF;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+/* Tipografi Header & Konteks Folder */
 QLabel#AppTitleLabel {
-    color: #0F172A;
+    color: #18181B;
     font-size: 20px;
-    font-weight: bold;
+    font-weight: 700;
 }
 
 QLabel#AppSubtitleLabel {
-    color: #475569;
+    color: #64748B;
     font-size: 13px;
 }
 
 QLabel#DropZoneTitleLabel {
-    color: #1E293B;
-    font-size: 16px;
-    font-weight: bold;
+    color: #18181B;
+    font-size: 17px;
+    font-weight: 700;
 }
 
 QLabel#DropZoneHintLabel {
@@ -37,82 +60,132 @@ QLabel#DropZoneHintLabel {
     font-size: 13px;
 }
 
+QLabel#TrustSignalLabel {
+    color: #64748B;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+QLabel#ActiveFolderBadge {
+    background-color: #EFF6FF;
+    color: #0067C0;
+    border: 1px solid #BFDBFE;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
 QLabel#SelectedFolderLabel {
-    color: #2563EB;
+    color: #18181B;
     font-size: 13px;
-    font-weight: bold;
+    font-weight: 600;
 }
 
 QLabel#SummaryInfoLabel {
     color: #334155;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 QLabel#StatusProgressLabel {
-    color: #475569;
-    font-size: 13px;
+    color: #64748B;
+    font-size: 12px;
+    font-weight: 500;
 }
 
-/* Area Drag-and-Drop (DropZone) */
+/* Area Drag-and-Drop (Hero Welcome & Compact Active Toolbar) */
 QFrame#DropZone {
     background-color: #FFFFFF;
-    border: 2px dashed #94A3B8;
+    border: 2px dashed #CBD5E1;
     border-radius: 12px;
-    padding: 20px;
+}
+
+QFrame#DropZone[compact="true"] {
+    background-color: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
 }
 
 QFrame#DropZone[dragActive="true"] {
     background-color: #EFF6FF;
-    border: 2px dashed #2563EB;
+    border: 2px dashed #0067C0;
 }
 
-/* Kartu Ringkasan & Kontainer */
+/* Strip Progres Fluent (Kontekstual Saat Proses Berjalan) */
+QWidget#ProgressStrip {
+    background-color: transparent;
+}
+
+QProgressBar#FluentProgressBar {
+    background-color: #E2E8F0;
+    border: none;
+    border-radius: 2px;
+    height: 4px;
+    max-height: 4px;
+}
+
+QProgressBar#FluentProgressBar::chunk {
+    background-color: #0067C0;
+    border-radius: 2px;
+}
+
+/* Kartu Ringkasan Dinamis */
 QFrame#SummaryCard {
     background-color: #FFFFFF;
     border: 1px solid #E2E8F0;
-    border-radius: 12px;
-    padding: 12px 16px;
+    border-radius: 10px;
 }
 
-/* Tombol Utama (Biru) */
+/* Hierarki Tombol (Hanya 1 CTA Biru Dominan) */
 QPushButton {
-    background-color: #2563EB;
+    background-color: #0067C0;
     color: #FFFFFF;
-    border: none;
+    border: 1px solid #005A9E;
     border-radius: 8px;
-    padding: 10px 18px;
-    font-size: 13px;
-    font-weight: bold;
-}
-
-QPushButton:hover {
-    background-color: #1D4ED8;
-}
-
-QPushButton:pressed {
-    background-color: #1E40AF;
-}
-
-QPushButton:disabled {
-    background-color: #CBD5E1;
-    color: #64748B;
-}
-
-/* Tombol Sekunder (Netral / Outline) */
-QPushButton#SecondaryButton {
-    background-color: #FFFFFF;
-    color: #1E293B;
-    border: 1px solid #CBD5E1;
-    border-radius: 8px;
-    padding: 10px 16px;
+    padding: 9px 18px;
     font-size: 13px;
     font-weight: 600;
 }
 
+QPushButton:hover {
+    background-color: #005A9E;
+    border-color: #004578;
+}
+
+QPushButton:pressed {
+    background-color: #004578;
+}
+
+QPushButton:disabled {
+    background-color: #E2E8F0;
+    color: #94A3B8;
+    border-color: #E2E8F0;
+}
+
+QMessageBox QPushButton {
+    min-width: 82px;
+    padding: 7px 14px;
+}
+
+/* Tombol Sekunder Netral (Outline) */
+QPushButton#SecondaryButton {
+    background-color: #FFFFFF;
+    color: #18181B;
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
 QPushButton#SecondaryButton:hover {
-    background-color: #F1F5F9;
+    background-color: #F8FAFC;
     border-color: #94A3B8;
+}
+
+QPushButton#SecondaryButton:pressed {
+    background-color: #F1F5F9;
 }
 
 QPushButton#SecondaryButton:disabled {
@@ -121,18 +194,24 @@ QPushButton#SecondaryButton:disabled {
     border-color: #E2E8F0;
 }
 
-/* Tombol Karantina ke Sampah (Oranye/Merah Lembut) */
+/* Tombol Karantina (Netral Saat Idle, Hangat Saat Hover) */
 QPushButton#QuarantineButton {
-    background-color: #FFF7ED;
-    color: #C2410C;
-    border: 1px solid #FDBA74;
+    background-color: #FFFFFF;
+    color: #475569;
+    border: 1px solid #CBD5E1;
     border-radius: 8px;
-    padding: 10px 16px;
+    padding: 8px 14px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 QPushButton#QuarantineButton:hover {
+    background-color: #FFF7ED;
+    color: #C2410C;
+    border-color: #FDBA74;
+}
+
+QPushButton#QuarantineButton:pressed {
     background-color: #FFEDD5;
     border-color: #FB923C;
 }
@@ -143,82 +222,93 @@ QPushButton#QuarantineButton:disabled {
     border-color: #E2E8F0;
 }
 
-/* Bar Progres (QProgressBar) */
-QProgressBar {
+/* Tab Filter Pill Minimalis */
+QWidget#FilterBar {
+    background-color: transparent;
+}
+
+QPushButton#FilterTabButton {
+    background-color: transparent;
+    color: #64748B;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+QPushButton#FilterTabButton:hover {
     background-color: #E2E8F0;
-    border: none;
-    border-radius: 6px;
-    height: 12px;
-    text-align: center;
-    color: #0F172A;
-    font-size: 11px;
+    color: #18181B;
+    border-color: transparent;
 }
 
-QProgressBar::chunk {
-    background-color: #2563EB;
-    border-radius: 6px;
-}
-
-/* Tabel Preview Rencana Perapian */
-QTableWidget {
+QPushButton#FilterTabButton[active="true"] {
     background-color: #FFFFFF;
-    alternate-background-color: #F8FAFC;
-    border: 1px solid #E2E8F0;
-    border-radius: 12px;
-    gridline-color: #F1F5F9;
-    selection-background-color: #DBEAFE;
-    selection-color: #1E3A8A;
-    font-size: 13px;
-    padding: 4px;
+    color: #0067C0;
+    border: 1px solid #CBD5E1;
+    font-weight: 600;
 }
 
-QTableWidget::item {
-    padding: 8px 12px;
-    border-bottom: 1px solid #F1F5F9;
+QPushButton#FilterTabButton[active="true"]:hover {
+    background-color: #FFFFFF;
+    color: #005A9E;
+    border-color: #94A3B8;
 }
 
-QHeaderView::section {
-    background-color: #F1F5F9;
-    color: #334155;
-    font-size: 13px;
-    font-weight: bold;
-    padding: 10px 12px;
-    border: none;
-    border-bottom: 1px solid #E2E8F0;
+QPushButton#FilterTabButton:disabled {
+    background-color: transparent;
+    color: #94A3B8;
+    border-color: transparent;
 }
 
-/* Banner Massal Usulan Rename */
+/* Banner Massal Usulan Nama Baru (Tenang, Tanpa Emoji) */
 QFrame#RenameBanner {
-    background-color: #ECFDF5;
-    border: 1px solid #A7F3D0;
+    background-color: #F0FDF4;
+    border: 1px solid #BBF7D0;
     border-radius: 10px;
 }
 
-QLabel#RenameBannerLabel {
-    color: #065F46;
-    font-size: 13px;
+QLabel#RenameBannerPill {
+    background-color: #DCFCE7;
+    color: #166534;
+    border: 1px solid #86EFAC;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 11px;
     font-weight: 600;
+}
+
+QLabel#RenameBannerLabel {
+    color: #166534;
+    font-size: 13px;
+    font-weight: 500;
     background-color: transparent;
 }
 
 QPushButton#BannerAcceptAllButton {
-    background-color: #16A34A;
-    color: #FFFFFF;
-    border: 1px solid #15803D;
+    background-color: #FFFFFF;
+    color: #166534;
+    border: 1px solid #86EFAC;
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 5px 12px;
     font-size: 12px;
-    font-weight: bold;
+    font-weight: 600;
 }
 
 QPushButton#BannerAcceptAllButton:hover {
-    background-color: #15803D;
+    background-color: #DCFCE7;
+    border-color: #4ADE80;
+}
+
+QPushButton#BannerAcceptAllButton:pressed {
+    background-color: #BBF7D0;
 }
 
 QPushButton#BannerAcceptAllButton:disabled {
-    background-color: #CBD5E1;
-    color: #64748B;
-    border-color: #CBD5E1;
+    background-color: #F8FAFC;
+    color: #94A3B8;
+    border-color: #E2E8F0;
 }
 
 QPushButton#BannerRejectAllButton {
@@ -226,9 +316,9 @@ QPushButton#BannerRejectAllButton {
     color: #475569;
     border: 1px solid #CBD5E1;
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 5px 12px;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 QPushButton#BannerRejectAllButton:hover {
@@ -237,26 +327,99 @@ QPushButton#BannerRejectAllButton:hover {
     border-color: #FCA5A5;
 }
 
+QPushButton#BannerRejectAllButton:pressed {
+    background-color: #FEE2E2;
+}
+
 QPushButton#BannerRejectAllButton:disabled {
     background-color: #F8FAFC;
     color: #94A3B8;
     border-color: #E2E8F0;
 }
 
-/* Sel Inline Usulan Rename & Checkbox di Tabel */
+/* Tabel Pratinjau Notion-Style */
+QTableWidget {
+    background-color: #FFFFFF;
+    color: #18181B;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    gridline-color: transparent;
+    selection-background-color: #EFF6FF;
+    selection-color: #18181B;
+    font-size: 13px;
+    outline: 0;
+}
+
+QTableWidget::item {
+    color: #18181B;
+    padding: 6px 10px;
+    border: none;
+    border-bottom: 1px solid #F1F5F9;
+}
+
+QTableWidget::item:selected {
+    background-color: #EFF6FF;
+    color: #18181B;
+}
+
+QHeaderView::section {
+    background-color: #F8FAFC;
+    color: #64748B;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 10px 10px;
+    border: none;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+QTableCornerButton::section {
+    background-color: #F8FAFC;
+    border: none;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+/* Kontainer Sel Tabel Transparan (Bebas Kotak Abu-Abu Saat Dark Mode OS) */
 QWidget#CheckboxCellContainer,
-QWidget#RenameCellContainer {
+QWidget#RenameCellContainer,
+QWidget#StatusCellContainer {
     background-color: transparent;
+    border: none;
 }
 
 QWidget#CheckboxCellContainer[renameHighlighted="true"],
-QWidget#RenameCellContainer[renameHighlighted="true"] {
-    background-color: #ECFDF5;
+QWidget#RenameCellContainer[renameHighlighted="true"],
+QWidget#StatusCellContainer[renameHighlighted="true"] {
+    background-color: #F0FDF4;
 }
 
-QLabel#RenameTextLabel {
+QCheckBox#FluentCheckBox {
     background-color: transparent;
+    border: none;
+}
+
+QLabel#RenameOrigLabel {
+    background-color: transparent;
+    color: #64748B;
+    font-size: 11px;
+}
+
+QLabel#RenameOrigLabel[approved="false"] {
+    color: #18181B;
     font-size: 13px;
+    font-weight: 500;
+}
+
+QLabel#RenameSuggLabel {
+    background-color: transparent;
+    color: #166534;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+QLabel#RenameSuggLabel[approved="false"] {
+    color: #94A3B8;
+    font-size: 11px;
+    font-weight: 400;
 }
 
 QPushButton#RenameAcceptButton {
@@ -264,13 +427,14 @@ QPushButton#RenameAcceptButton {
     color: #16A34A;
     border: 1px solid #86EFAC;
     border-radius: 6px;
-    padding: 2px;
+    padding: 0px;
     font-size: 13px;
-    font-weight: bold;
+    font-weight: 700;
 }
 
 QPushButton#RenameAcceptButton:hover {
     background-color: #DCFCE7;
+    border-color: #4ADE80;
 }
 
 QPushButton#RenameAcceptButton[active="true"] {
@@ -288,9 +452,9 @@ QPushButton#RenameRejectButton {
     color: #64748B;
     border: 1px solid #CBD5E1;
     border-radius: 6px;
-    padding: 2px;
+    padding: 0px;
     font-size: 13px;
-    font-weight: bold;
+    font-weight: 700;
 }
 
 QPushButton#RenameRejectButton:hover {
@@ -309,36 +473,98 @@ QPushButton#RenameRejectButton[active="true"]:hover {
     background-color: #FECACA;
 }
 
-/* Checkbox di Tabel */
-QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
+/* Pill Badge Status di Kolom 4 */
+QLabel#StatusPill {
+    border-radius: 10px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+QLabel#StatusPill[variant="ready"] {
+    background-color: #ECFDF5;
+    color: #166534;
+    border: 1px solid #BBF7D0;
+}
+
+QLabel#StatusPill[variant="warning"] {
+    background-color: #FEF3C7;
+    color: #92400E;
+    border: 1px solid #FDE68A;
+}
+
+QLabel#StatusPill[variant="muted"] {
+    background-color: #F1F5F9;
+    color: #64748B;
+    border: 1px solid #E2E8F0;
+}
+
+/* Scrollbar Tipis Fluent */
+QScrollBar:vertical {
+    background-color: transparent;
+    width: 8px;
+    margin: 4px 2px 4px 0px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #CBD5E1;
     border-radius: 4px;
-    border: 1px solid #94A3B8;
-    background-color: #FFFFFF;
+    min-height: 32px;
 }
 
-QCheckBox::indicator:checked {
-    background-color: #2563EB;
-    border-color: #2563EB;
+QScrollBar::handle:vertical:hover {
+    background-color: #94A3B8;
 }
 
-QCheckBox::indicator:disabled {
-    background-color: #E2E8F0;
-    border-color: #CBD5E1;
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0px;
+    background: none;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: transparent;
+}
+
+QScrollBar:horizontal {
+    background-color: transparent;
+    height: 8px;
+    margin: 0px 4px 2px 4px;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #CBD5E1;
+    border-radius: 4px;
+    min-width: 32px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: #94A3B8;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    width: 0px;
+    background: none;
+}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+    background: transparent;
 }
 
 /* Kartu Kondisi Kosong (Empty State) */
 QFrame#EmptyStateCard {
     background-color: #FFFFFF;
     border: 1px solid #E2E8F0;
-    border-radius: 12px;
+    border-radius: 10px;
 }
 
 QLabel#EmptyStateTitleLabel {
-    color: #334155;
+    color: #18181B;
     font-size: 16px;
-    font-weight: bold;
+    font-weight: 700;
     background-color: transparent;
 }
 

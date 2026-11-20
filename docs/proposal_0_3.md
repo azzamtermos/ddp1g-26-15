@@ -96,7 +96,7 @@ Setiap perubahan kode wajib mematuhi aturan berikut:
 
 ### Tahap 3 — Packaging Mandiri (Windows & Debian/Ubuntu/Mint) & Uji Beta (Branch: `feat/beta-packaging`)
 *(Dimulai setelah Tahap 2 di-merge ke `main`)*
-- [ ] **Partisi 3A — Build Aplikasi Mandiri (`PyInstaller` + Paket `.deb` & `.exe`)**
+- [x] **Partisi 3A — Build Aplikasi Mandiri (`PyInstaller` + Paket `.deb` & `.exe`)**
   - Siapkan konfigurasi `PyInstaller` beserta resolusi path *bundled* (`sys._MEIPASS` untuk membaca `data/default_rules.json` & `data/text_rules.json`, serta direktori user yang *writable* seperti `~/.local/share/` atau `%APPDATA%` untuk menyimpan `undo_history.json`).
   - Buat skrip otomatis `scripts/build_deb.sh` yang membungkus hasil *build* `PyInstaller` menjadi paket installer **`.deb`** (mendukung deteksi arsitektur otomatis `amd64` untuk Linux Mint/Ubuntu desktop dan `arm64` untuk Ubuntu tablet, lengkap dengan file `.desktop` dan ikon aplikasi).
   - Siapkan panduan/skrip *build* `.exe` untuk distribusi ke pengguna Windows.

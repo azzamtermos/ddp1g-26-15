@@ -1,8 +1,9 @@
-"""Jendela utama (MainWindow) untuk aplikasi Smart File Organizer.
+"""Jendela utama (MainWindow) untuk aplikasi Rapihin Aja.
 
-Menyatukan komponen DropZoneWidget, kartu ringkasan dinamis & progres,
-RenameBannerWidget, PreviewTableWidget/EmptyStateWidget, serta tombol aksi
-dengan worker thread (QThread) dan bahasa antarmuka yang ramah pengguna awam.
+Menyatukan fase Welcome dan Active dalam gaya Windows 11 Fluent + Notion Minimalist:
+area pemilihan folder adaptif (`CollapsibleDropZoneWidget`), strip progres tipis
+(`FluentProgressStrip`), ringkasan dinamis, tab filter pill (`FilterBarWidget`),
+persetujuan rename (`RenameBannerWidget`), dan tabel pratinjau (`PreviewTableWidget`).
 """
 
 from typing import Any
@@ -15,8 +16,8 @@ from PyQt6.QtWidgets import (
     QLabel,
     QMainWindow,
     QMessageBox,
-    QProgressBar,
     QPushButton,
+    QSizePolicy,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -26,8 +27,10 @@ from core.models import FilePlanItem
 from core.paths import get_icon_path
 from core.safety import validate_target_directory
 from ui.widgets import (
-    DropZoneWidget,
+    CollapsibleDropZoneWidget,
     EmptyStateWidget,
+    FilterBarWidget,
+    FluentProgressStrip,
     PreviewTableWidget,
     RenameBannerWidget,
 )
@@ -35,13 +38,13 @@ from ui.worker import OrganizeWorker, ScanWorker
 
 
 class MainWindow(QMainWindow):
-    """Jendela utama aplikasi Smart File Organizer dengan alur pemindaian otomatis."""
+    """Jendela utama aplikasi Rapihin Aja dengan progresif disclosure Welcome dan Active."""
 
     def __init__(self) -> None:
-        """Menginisialisasi tata letak antarmuka, sinyal, dan status awal komponen."""
+        """Menginisialisasi tata letak antarmuka, sinyal, dan status awal Welcome State."""
         super().__init__()
         self.setWindowTitle("Rapihin Aja")
-        self.setMinimumSize(920, 660)
+        self.setMinimumSize(940, 660)
 
         icon_path = get_icon_path()
         if icon_path:
@@ -51,31 +54,35 @@ class MainWindow(QMainWindow):
         self.current_items: list[FilePlanItem] = []
         self._last_wasted_space_info: dict[str, Any] = {}
         self._last_organize_summary: dict[str, int] = {}
+        self._is_busy: bool = False
         self.scan_worker: ScanWorker | None = None
         self.organize_worker: OrganizeWorker | None = None
 
         self._setup_ui()
         self._connect_signals()
+        self._set_workspace_active(False)
 
     def _setup_ui(self) -> None:
-        """Menyusun komponen visual utama dengan jarak (spacing) dan margin yang lega."""
+        """Menyusun komponen visual utama dengan margin lega dan hierarki fokus bersih."""
         central_widget = QWidget(self)
         central_widget.setObjectName("CentralWidget")
         self.setCentralWidget(central_widget)
 
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(24, 24, 24, 24)
-        main_layout.setSpacing(14)
+        main_layout.setContentsMargins(24, 20, 24, 20)
+        main_layout.setSpacing(12)
 
         # 1. Header Judul Aplikasi
         header_layout = QVBoxLayout()
-        header_layout.setSpacing(4)
+        header_layout.setContentsMargins(0, 0, 0, 2)
+        header_layout.setSpacing(3)
 
-        self.title_label = QLabel("Rapihin Aja")
+        self.title_label = QLabel("Rapihin Aja", self)
         self.title_label.setObjectName("AppTitleLabel")
 
         self.subtitle_label = QLabel(
-            "Rapikan folder berantakan, amankan file kembar ke karantina, dan batalkan kapan saja dengan 1 klik."
+            "Rapikan folder berantakan, amankan file kembar ke karantina, dan batalkan kapan saja dengan 1 klik.",
+            self,
         )
         self.subtitle_label.setObjectName("AppSubtitleLabel")
 
@@ -83,74 +90,86 @@ class MainWindow(QMainWindow):
         header_layout.addWidget(self.subtitle_label)
         main_layout.addLayout(header_layout)
 
-        # 2. Area Drag-and-Drop (Fokus Visual Utama)
-        self.drop_zone = DropZoneWidget(self)
+        # Spacer Welcome Atas (aktif hanya saat Welcome State)
+        self.welcome_top_spacer = QWidget(self)
+        self.welcome_top_spacer.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        main_layout.addWidget(self.welcome_top_spacer, stretch=1)
+
+        # 2. Area Drag-and-Drop Adaptif (Hero saat Welcome -> Toolbar Kompak saat Active)
+        self.drop_zone = CollapsibleDropZoneWidget(self)
         main_layout.addWidget(self.drop_zone)
 
-        # 3. Kartu Ringkasan Dinamis & Bar Progres Real-Time
-        self.summary_card = QFrame(self)
+        # 3. Strip Progres Tipis (Kontekstual, tersembunyi ketika tidak ada operasi)
+        self.progress_strip = FluentProgressStrip(self)
+        main_layout.addWidget(self.progress_strip)
+
+        # 4. Kontainer Workspace Aktif (Ringkasan, Filter Tab, Banner Rename, Tabel)
+        self.workspace_container = QWidget(self)
+        workspace_layout = QVBoxLayout(self.workspace_container)
+        workspace_layout.setContentsMargins(0, 0, 0, 0)
+        workspace_layout.setSpacing(10)
+
+        self.summary_card = QFrame(self.workspace_container)
         self.summary_card.setObjectName("SummaryCard")
-        summary_layout = QVBoxLayout(self.summary_card)
-        summary_layout.setContentsMargins(16, 12, 16, 12)
+        summary_layout = QHBoxLayout(self.summary_card)
+        summary_layout.setContentsMargins(14, 10, 14, 10)
         summary_layout.setSpacing(8)
 
-        info_row = QHBoxLayout()
         self.summary_info_label = QLabel(
-            "Pilih folder di atas untuk melihat rencana perapian file Anda."
+            "Memeriksa isi folder...",
+            self.summary_card,
         )
         self.summary_info_label.setObjectName("SummaryInfoLabel")
         self.summary_info_label.setWordWrap(True)
+        summary_layout.addWidget(self.summary_info_label, stretch=1)
+        workspace_layout.addWidget(self.summary_card)
 
-        self.status_progress_label = QLabel("Siap memeriksa folder.")
-        self.status_progress_label.setObjectName("StatusProgressLabel")
-        self.status_progress_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
+        self.filter_bar = FilterBarWidget(self.workspace_container)
+        workspace_layout.addWidget(self.filter_bar)
 
-        info_row.addWidget(self.summary_info_label, stretch=3)
-        info_row.addWidget(self.status_progress_label, stretch=2)
+        self.rename_banner = RenameBannerWidget(self.workspace_container)
+        workspace_layout.addWidget(self.rename_banner)
 
-        self.progress_bar = QProgressBar(self.summary_card)
-        self.progress_bar.setRange(0, 100)
-        self.progress_bar.setValue(0)
-
-        summary_layout.addLayout(info_row)
-        summary_layout.addWidget(self.progress_bar)
-        main_layout.addWidget(self.summary_card)
-
-        # 4. Banner Persetujuan Massal Usulan Nama Baru
-        self.rename_banner = RenameBannerWidget(self)
-        main_layout.addWidget(self.rename_banner)
-
-        # 5. Kontainer Bertumpuk: Tabel Pratinjau atau Empty State Ramah
-        self.content_stack = QStackedWidget(self)
+        self.content_stack = QStackedWidget(self.workspace_container)
         self.preview_table = PreviewTableWidget(self)
         self.empty_state_widget = EmptyStateWidget(self)
         self.content_stack.addWidget(self.preview_table)
         self.content_stack.addWidget(self.empty_state_widget)
         self.content_stack.setCurrentIndex(0)
-        main_layout.addWidget(self.content_stack, stretch=1)
+        workspace_layout.addWidget(self.content_stack, stretch=1)
 
-        # 6. Bar Tombol Tindakan Ramah Pengguna
+        main_layout.addWidget(self.workspace_container, stretch=1)
+
+        # Spacer Welcome Bawah (aktif hanya saat Welcome State)
+        self.welcome_bottom_spacer = QWidget(self)
+        self.welcome_bottom_spacer.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        main_layout.addWidget(self.welcome_bottom_spacer, stretch=2)
+
+        # 5. Footer Tindakan (Hanya 1 Tombol CTA Biru Dominan di Kanan)
         action_layout = QHBoxLayout()
-        action_layout.setSpacing(12)
+        action_layout.setContentsMargins(0, 2, 0, 0)
+        action_layout.setSpacing(10)
 
-        self.refresh_button = QPushButton("Pindai Ulang")
+        self.refresh_button = QPushButton("Pindai Ulang", self)
         self.refresh_button.setObjectName("SecondaryButton")
         self.refresh_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.refresh_button.setEnabled(False)
 
-        self.undo_button = QPushButton("Batalkan (Undo)")
+        self.undo_button = QPushButton("Batalkan Perapian Terakhir (Undo)", self)
         self.undo_button.setObjectName("SecondaryButton")
         self.undo_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.undo_button.setEnabled(True)
 
-        self.empty_quarantine_button = QPushButton("Bersihkan Karantina ke Sampah")
+        self.empty_quarantine_button = QPushButton("Bersihkan Karantina ke Sampah", self)
         self.empty_quarantine_button.setObjectName("QuarantineButton")
         self.empty_quarantine_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.empty_quarantine_button.setEnabled(False)
 
-        self.organize_button = QPushButton("Rapikan Sekarang")
+        self.organize_button = QPushButton("Rapikan Sekarang", self)
         self.organize_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.organize_button.setEnabled(False)
 
@@ -165,6 +184,7 @@ class MainWindow(QMainWindow):
     def _connect_signals(self) -> None:
         """Menghubungkan sinyal dari widget dan tombol ke slot penangan di MainWindow."""
         self.drop_zone.folder_selected.connect(self._on_folder_selected)
+        self.filter_bar.filter_changed.connect(self.preview_table.set_filter_mode)
         self.rename_banner.accept_all_clicked.connect(
             lambda: self.preview_table.set_all_renames_approved(True)
         )
@@ -178,6 +198,20 @@ class MainWindow(QMainWindow):
         self.undo_button.clicked.connect(self.start_undo)
         self.empty_quarantine_button.clicked.connect(self.start_empty_quarantine)
 
+    def _set_workspace_active(self, active: bool) -> None:
+        """Mengatur transisi antarmuka antara Welcome State dan Active State."""
+        self.welcome_top_spacer.setVisible(not active)
+        self.welcome_bottom_spacer.setVisible(not active)
+        self.workspace_container.setVisible(active)
+        self.drop_zone.set_compact(active)
+
+        self.refresh_button.setVisible(active)
+        self.empty_quarantine_button.setVisible(active)
+        self.organize_button.setVisible(active)
+        self.undo_button.setText(
+            "Batalkan (Undo)" if active else "Batalkan Perapian Terakhir (Undo)"
+        )
+
     def _on_folder_selected(self, folder_path: str) -> None:
         """Memvalidasi keamanan folder terpilih lalu langsung memindai jika aman."""
         is_safe, warning_message = validate_target_directory(folder_path)
@@ -188,6 +222,7 @@ class MainWindow(QMainWindow):
 
         self.current_folder = folder_path
         self.drop_zone.set_selected_folder_text(folder_path)
+        self._set_workspace_active(True)
         self.refresh_button.setEnabled(True)
         self.empty_quarantine_button.setEnabled(True)
         self.start_scan()
@@ -203,11 +238,8 @@ class MainWindow(QMainWindow):
         self._sync_organize_button_state()
 
     def _update_dynamic_summary(self) -> None:
-        """Menyusun teks ringkasan ramah pengguna yang selalu sinkron dengan pilihan tabel."""
+        """Menyusun teks ringkasan ramah pengguna yang selalu sinkron di seluruh tab."""
         if not self.current_folder:
-            self.summary_info_label.setText(
-                "Pilih folder di atas untuk melihat rencana perapian file Anda."
-            )
             return
 
         summary = self.preview_table.get_selection_summary()
@@ -223,15 +255,19 @@ class MainWindow(QMainWindow):
                 "Centang minimal 1 file untuk melanjutkan",
             ]
             if summary["manual_check_count"] > 0:
-                parts.append(f"{summary['manual_check_count']} file perlu dicek manual")
-            self.summary_info_label.setText(" • ".join(parts))
+                parts.append(f"{summary['manual_check_count']} perlu cek manual")
+            self.summary_info_label.setText("  •  ".join(parts))
             return
 
-        parts = [f"{summary['selected_ready']} file siap dirapikan"]
+        parts: list[str] = []
+        if summary["selected_ready"] > 0:
+            parts.append(f"{summary['selected_ready']} file siap dirapikan")
+        if summary["selected_obsolete"] > 0:
+            parts.append(f"{summary['selected_obsolete']} installer usang")
         if summary["selected_duplicates"] > 0:
             parts.append(f"{summary['selected_duplicates']} duplikat diamankan")
         if summary["manual_check_count"] > 0:
-            parts.append(f"{summary['manual_check_count']} file perlu dicek manual")
+            parts.append(f"{summary['manual_check_count']} perlu cek manual")
         if summary["unchecked_count"] > 0:
             parts.append(f"{summary['unchecked_count']} dikecualikan")
 
@@ -240,27 +276,32 @@ class MainWindow(QMainWindow):
         if isinstance(total_bytes, int) and total_bytes > 0:
             parts.append(f"Potensi hemat ruang: {formatted_size}")
 
-        self.summary_info_label.setText(" • ".join(parts))
+        self.summary_info_label.setText("  •  ".join(parts))
 
     def _sync_organize_button_state(self) -> None:
-        """Menyelaraskan status tombol eksekusi berdasarkan item yang dicentang."""
+        """Menyelaraskan teks penghitung (N) dan status tombol eksekusi lintas semua tab."""
+        selected_count = len(self.preview_table.get_selected_items())
+        if selected_count > 0:
+            self.organize_button.setText(f"Rapikan Sekarang ({selected_count})")
+        else:
+            self.organize_button.setText("Rapikan Sekarang")
+
         scan_busy = self.scan_worker is not None and self.scan_worker.isRunning()
         org_busy = self.organize_worker is not None and self.organize_worker.isRunning()
-        if scan_busy or org_busy:
+        if self._is_busy or scan_busy or org_busy:
             self.organize_button.setEnabled(False)
             return
-        self.organize_button.setEnabled(bool(self.preview_table.get_selected_items()))
+        self.organize_button.setEnabled(selected_count > 0)
 
     def _set_controls_busy(self, busy: bool) -> None:
-        """Mengatur status aktif/nonaktif tombol selama proses di latar belakang berjalan."""
-        self.drop_zone.browse_button.setEnabled(not busy)
+        """Mengatur status aktif/nonaktif kontrol selama proses di latar belakang berjalan."""
+        self._is_busy = busy
+        self.drop_zone.set_controls_enabled(not busy)
         self.refresh_button.setEnabled(not busy and bool(self.current_folder))
-        self.organize_button.setEnabled(
-            not busy and bool(self.preview_table.get_selected_items())
-        )
         self.undo_button.setEnabled(not busy)
         self.empty_quarantine_button.setEnabled(not busy and bool(self.current_folder))
         self.rename_banner.set_buttons_enabled(not busy)
+        self._sync_organize_button_state()
 
     def start_scan(self) -> None:
         """Memulai ScanWorker di latar belakang untuk memeriksa folder yang sedang aktif."""
@@ -270,9 +311,9 @@ class MainWindow(QMainWindow):
             return
 
         self.rename_banner.setVisible(False)
+        self.summary_info_label.setText("Sedang memeriksa isi folder...")
         self._set_controls_busy(True)
-        self.progress_bar.setValue(0)
-        self.status_progress_label.setText("Sedang memeriksa isi folder...")
+        self.progress_strip.start_progress("Sedang memeriksa isi folder...", 0)
 
         self.scan_worker = ScanWorker(folder_path=self.current_folder, parent=self)
         self.scan_worker.progress_updated.connect(self._on_worker_progress)
@@ -281,31 +322,39 @@ class MainWindow(QMainWindow):
         self.scan_worker.start()
 
     def _on_worker_progress(self, percent: int, message: str) -> None:
-        """Memperbarui nilai QProgressBar dan teks status secara langsung."""
-        self.progress_bar.setValue(percent)
-        self.status_progress_label.setText(message)
+        """Memperbarui strip progres kontekstual secara langsung selama worker berjalan."""
+        self.progress_strip.update_progress(percent, message)
 
     def _on_scan_finished(
         self,
         items: list[FilePlanItem],
         wasted_space_info: dict[str, Any],
     ) -> None:
-        """Menampilkan daftar hasil pemeriksaan ke tabel pratinjau dan ringkasan dinamis."""
+        """Menampilkan hasil pemeriksaan ke tabel pratinjau, tab filter, dan ringkasan dinamis."""
+        self.progress_strip.finish_progress()
         self.current_items = items
         self._last_wasted_space_info = wasted_space_info or {}
+
         self.preview_table.populate_items(items)
+        filter_counts = self.preview_table.get_filter_counts()
+        self.filter_bar.set_active_filter("all", emit_signal=False)
+        self.filter_bar.update_counts(
+            total=filter_counts["total"],
+            rename=filter_counts["rename"],
+            duplicate=filter_counts["duplicate"],
+            manual=filter_counts["manual"],
+            obsolete=filter_counts["obsolete"],
+        )
+        self.filter_bar.setVisible(bool(items))
+
         self._sync_rename_banner()
         self._update_dynamic_summary()
 
-        if not items:
-            self.content_stack.setCurrentIndex(1)
-        else:
-            self.content_stack.setCurrentIndex(0)
-
+        self.content_stack.setCurrentIndex(1 if not items else 0)
         self._set_controls_busy(False)
 
     def start_organize(self) -> None:
-        """Memulai OrganizeWorker untuk merapikan file yang dicentang ke kategori dan karantina."""
+        """Memulai OrganizeWorker untuk merapikan seluruh file tercentang di semua tab."""
         selected_items = self.preview_table.get_selected_items()
         if not selected_items:
             return
@@ -332,6 +381,7 @@ class MainWindow(QMainWindow):
         }
 
         self._set_controls_busy(True)
+        self.progress_strip.start_progress("Sedang merapikan file...", 0)
         self.organize_worker = OrganizeWorker(
             mode="organize",
             items=selected_items,
@@ -345,6 +395,7 @@ class MainWindow(QMainWindow):
 
     def _on_organize_finished(self, success_count: int, errors: list[str]) -> None:
         """Menampilkan dialog ringkasan hasil yang menenangkan lalu memeriksa ulang isi folder."""
+        self.progress_strip.finish_progress()
         self._set_controls_busy(False)
         snapshot = self._last_organize_summary
         planned_normal = snapshot.get("planned_normal", success_count)
@@ -395,6 +446,9 @@ class MainWindow(QMainWindow):
             return
 
         self._set_controls_busy(True)
+        self.progress_strip.start_progress(
+            "Sedang mengembalikan file ke lokasi dan nama aslinya...", 20
+        )
         self.organize_worker = OrganizeWorker(
             mode="undo",
             base_folder_path=self.current_folder,
@@ -407,6 +461,7 @@ class MainWindow(QMainWindow):
 
     def _on_undo_finished(self, restored_count: int, errors: list[str]) -> None:
         """Menampilkan hasil pembatalan dengan bahasa tenang serta menangani catatan skip."""
+        self.progress_strip.finish_progress()
         self._set_controls_busy(False)
         if restored_count > 0:
             base_msg = (
@@ -452,6 +507,9 @@ class MainWindow(QMainWindow):
             return
 
         self._set_controls_busy(True)
+        self.progress_strip.start_progress(
+            "Sedang memindahkan file karantina ke Tempat Sampah...", 20
+        )
         self.organize_worker = OrganizeWorker(
             mode="empty_quarantine",
             base_folder_path=self.current_folder,
@@ -464,6 +522,7 @@ class MainWindow(QMainWindow):
 
     def _on_empty_quarantine_finished(self, trashed_count: int, errors: list[str]) -> None:
         """Menampilkan hasil pembersihan folder karantina ke pengguna."""
+        self.progress_strip.finish_progress()
         self._set_controls_busy(False)
         if trashed_count > 0:
             msg = (
@@ -485,6 +544,8 @@ class MainWindow(QMainWindow):
 
     def _on_worker_error(self, error_message: str) -> None:
         """Menampilkan pesan ramah pengguna apabila proses di latar belakang mengalami kendala."""
+        self.progress_strip.finish_progress()
         self._set_controls_busy(False)
-        self.status_progress_label.setText("Proses belum dapat diselesaikan.")
+        if self.current_folder and not self.current_items:
+            self.summary_info_label.setText("Pemeriksaan folder belum dapat diselesaikan.")
         QMessageBox.warning(self, "Proses Belum Dapat Dilanjutkan", error_message)
